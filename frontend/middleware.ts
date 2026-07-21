@@ -53,11 +53,14 @@ export async function middleware(request: NextRequest) {
 
   // 2. Authenticated User Flow
   try {
-    const { data: onboarding } = (await supabase
-      .from("user_onboarding")
-      .select("completed")
-      .eq("user_id", user.id)
-      .single()) as any;
+    const queryTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), 2500)
+    );
+
+    const { data: onboarding } = (await Promise.race([
+      supabase.from("user_onboarding").select("completed").eq("user_id", user.id).single(),
+      queryTimeout
+    ])) as any;
 
     const isCompleted = onboarding?.completed || false;
 

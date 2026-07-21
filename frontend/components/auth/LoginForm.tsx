@@ -31,10 +31,17 @@ export default function LoginForm() {
     say(OWL_MESSAGES.submitting.text, OWL_MESSAGES.submitting.mood);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
+      const requestTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. Please check your network connection.")), 10000)
+      );
+
+      const { error } = (await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: data.email,
+          password: data.password,
+        }),
+        requestTimeout
+      ])) as { error: { message: string } | null };
 
       if (error) {
         toast.error(error.message);
