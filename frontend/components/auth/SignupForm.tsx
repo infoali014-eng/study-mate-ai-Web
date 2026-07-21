@@ -51,7 +51,7 @@ export default function SignupForm() {
         toast.success("Account created successfully!");
         say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/onboarding");
         }, 1500);
       }
     } catch (err: unknown) {

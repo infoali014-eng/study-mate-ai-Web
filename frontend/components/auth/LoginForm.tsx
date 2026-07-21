@@ -44,7 +44,7 @@ export default function LoginForm() {
         toast.success("Successfully logged in!");
         say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/onboarding");
         }, 1500);
       }
     } catch (err: unknown) {
