@@ -4,14 +4,14 @@ export const OWL_DEFAULT_POSITION = {
 };
 
 export const OWL_DIMENSIONS = {
-  width: 80,
-  height: 80,
+  width: 135,
+  height: 185,
 };
 
 export const OWL_FLIGHT_PATH = {
-  START: { x: -600, y: -400 },
-  MID: { x: -250, y: -220 },
-  LAND: { x: 0, y: 0 },
-  BOUNCE: { x: 5, y: -15 },
+  START: { x: "-95vw", y: "-90vh" },
+  MID: { x: "-45vw", y: "-45vh" },
+  LAND: { x: "0px", y: "0px" },
+  BOUNCE: { x: "5px", y: "-15px" },
   DURATION: 2.5,
 };
