@@ -213,3 +213,82 @@ CREATE POLICY "Users can insert their own onboarding answers."
     ON public.user_onboarding FOR INSERT
     TO authenticated
     WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- 6. TRANSACTIONAL RPC PROCEDURES
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.submit_onboarding(
+    p_user_id UUID,
+    p_education TEXT,
+    p_subjects TEXT[],
+    p_primary_goals TEXT[],
+    p_heard_from TEXT,
+    p_interests TEXT[],
+    p_learning_styles TEXT[],
+    p_daily_study_time TEXT,
+    p_next_exam DATE,
+    p_dashboard_focus TEXT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_daily_study_goal INTEGER;
+    v_daily_study_hours NUMERIC;
+BEGIN
+    -- Map daily study time options to goals
+    CASE p_daily_study_time
+        WHEN '30_min' THEN
+            v_daily_study_goal := 30;
+            v_daily_study_hours := 0.5;
+        WHEN '1_hour' THEN
+            v_daily_study_goal := 60;
+            v_daily_study_hours := 1.0;
+        WHEN '2_hours' THEN
+            v_daily_study_goal := 120;
+            v_daily_study_hours := 2.0;
+        WHEN '4_hours' THEN
+            v_daily_study_goal := 240;
+            v_daily_study_hours := 4.0;
+        WHEN '6_plus_hours' THEN
+            v_daily_study_goal := 360;
+            v_daily_study_hours := 6.0;
+        ELSE
+            v_daily_study_goal := 30;
+            v_daily_study_hours := 0.5;
+    END CASE;
+
+    -- 1. Update Profiles Table
+    UPDATE public.profiles
+    SET profile_completion = 100,
+        last_active_at = NOW(),
+        updated_at = NOW()
+    WHERE id = p_user_id;
+
+    -- 2. Update User Preferences Table
+    UPDATE public.user_preferences
+    SET learning_style = p_learning_styles[1], -- Map first style as primary learning style
+        daily_study_goal = v_daily_study_goal,
+        daily_study_hours = v_daily_study_hours,
+        dashboard_focus = p_dashboard_focus,
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+
+    -- 3. Update User Onboarding Table
+    UPDATE public.user_onboarding
+    SET education = p_education,
+        primary_goal = array_to_string(p_primary_goals, ', '),
+        heard_from = p_heard_from,
+        interests = p_interests,
+        subjects = p_subjects,
+        next_exam = p_next_exam,
+        completed = TRUE,
+        completed_at = NOW()
+    WHERE user_id = p_user_id;
+
+    RETURN TRUE;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
