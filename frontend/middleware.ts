@@ -13,8 +13,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/flashcards") ||
     pathname.startsWith("/planner");
   const isOnboardingRoute = pathname === "/onboarding";
+  const isAuthRoute = pathname === "/login" || pathname === "/signup";
 
-  if (!isDashboardRoute && !isOnboardingRoute) {
+  // Skip middleware execution if route is not protected or login/signup
+  if (!isDashboardRoute && !isOnboardingRoute && !isAuthRoute) {
     return NextResponse.next();
   }
 
@@ -39,15 +41,18 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // 1. Unauthenticated User Flow
   if (!user) {
-    // If not authenticated, redirect to /login
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    return NextResponse.redirect(redirectUrl);
+    if (isDashboardRoute || isOnboardingRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+    return NextResponse.next();
   }
 
+  // 2. Authenticated User Flow
   try {
-    // Check if user completed the onboarding wizard
     const { data: onboarding } = (await supabase
       .from("user_onboarding")
       .select("completed")
@@ -56,21 +61,28 @@ export async function middleware(request: NextRequest) {
 
     const isCompleted = onboarding?.completed || false;
 
+    // Redirect logged-in users away from /login and /signup
+    if (isAuthRoute) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = isCompleted ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Force incomplete onboarding users to complete it
     if (isDashboardRoute && !isCompleted) {
-      // Incomplete onboarding redirect to /onboarding
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/onboarding";
       return NextResponse.redirect(redirectUrl);
     }
 
+    // Prevent completed onboarding users from returning to /onboarding
     if (isOnboardingRoute && isCompleted) {
-      // Completed onboarding redirect to main /dashboard
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/dashboard";
       return NextResponse.redirect(redirectUrl);
     }
   } catch (err) {
-    // Safe fallback if database tables don't exist yet
+    // Safe fallback if database queries error out
   }
 
   return NextResponse.next();
@@ -84,5 +96,7 @@ export const config = {
     "/flashcards/:path*",
     "/planner/:path*",
     "/onboarding",
+    "/login",
+    "/signup",
   ],
 };
