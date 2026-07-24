@@ -11,7 +11,7 @@ function getR2Credentials() {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.R2_BUCKET_NAME || "mrowl-study-library";
+  const bucketName = process.env.R2_BUCKET_NAME || "studymate-files";
 
   if (!accountId) {
     throw new Error("[Cloudflare R2] Configuration Error: R2_ACCOUNT_ID environment variable is missing.");
@@ -65,12 +65,21 @@ export async function uploadFileToR2(
     ContentType: mimeType,
   });
 
-  await client.send(command);
-
-  return {
-    success: true,
-    fileKey,
-  };
+  try {
+    await client.send(command);
+    return {
+      success: true,
+      fileKey,
+    };
+  } catch (error: unknown) {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    if (errMessage.includes("Access Denied") || errMessage.includes("AccessDenied")) {
+      throw new Error(
+        `Cloudflare R2 Access Denied: The Access Key ID or API token does not have "Object Read & Write" permission for bucket "${bucketName}". Please check R2 API Token permissions in Cloudflare Dashboard.`
+      );
+    }
+    throw error;
+  }
 }
 
 /**
