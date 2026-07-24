@@ -9,6 +9,7 @@ import {
   FileCategoryFilter,
 } from "@/types/library.types";
 import { LibraryService } from "@/services/libraryService";
+import { StreakService } from "@/features/streak/services/streakService";
 
 export function useStudyLibrary() {
   const queryClient = useQueryClient();
@@ -104,6 +105,11 @@ export function useStudyLibrary() {
     onSuccess: () => {
       setUploadSuccess(true);
       invalidateAll();
+      StreakService.recordActivity("upload").then((res) => {
+        if (res.newlyCompleted) {
+          queryClient.invalidateQueries({ queryKey: ["userStreak"] });
+        }
+      });
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
@@ -249,7 +255,16 @@ export function useStudyLibrary() {
     },
     // Modals
     previewNote,
-    setPreviewNote,
+    setPreviewNote: (note: Note | null) => {
+      setPreviewNote(note);
+      if (note) {
+        StreakService.recordActivity("preview").then((res) => {
+          if (res.newlyCompleted) {
+            queryClient.invalidateQueries({ queryKey: ["userStreak"] });
+          }
+        });
+      }
+    },
     versionNote,
     setVersionNote,
     moveNoteItem,

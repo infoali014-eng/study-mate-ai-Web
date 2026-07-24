@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import {
   Menu,
   Search,
-  Flame,
   PanelLeftOpen,
   PanelLeftClose,
 } from "lucide-react";
@@ -12,6 +11,7 @@ import Breadcrumb from "./Breadcrumb";
 import SearchModal from "./SearchModal";
 import NotificationsDropdown from "./NotificationsDropdown";
 import UserAvatarDropdown from "./UserAvatarDropdown";
+import StreakButton from "@/features/streak/components/StreakButton";
 
 interface TopbarProps {
   onMobileMenuToggle: () => void;
@@ -91,14 +91,8 @@ export default function Topbar({
             </span>
           </button>
 
-          {/* 2. Duolingo-Inspired Current Streak Badge */}
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFB703]/15 border border-[#FFB703]/40 rounded-[12px] text-xs font-extrabold text-[#023047] shadow-xs"
-            title="12 Day Study Streak!"
-          >
-            <Flame className="w-4 h-4 text-[#FB8500] fill-[#FB8500] animate-pulse" />
-            <span>12 Days</span>
-          </div>
+          {/* 2. Production Duolingo-Inspired Streak Button & Popover */}
+          <StreakButton />
 
           {/* 3. Notifications Button & Dropdown */}
           <NotificationsDropdown />
