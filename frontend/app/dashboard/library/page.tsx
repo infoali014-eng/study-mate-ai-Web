@@ -21,6 +21,8 @@ import ShareNoteModal from "@/components/library/ShareNoteModal";
 import CreateFolderModal from "@/components/library/CreateFolderModal";
 import MoveNoteModal from "@/components/library/MoveNoteModal";
 
+import DeleteFolderModal from "@/components/library/DeleteFolderModal";
+
 export default function StudyLibraryPage() {
   const {
     notes,
@@ -55,6 +57,9 @@ export default function StudyLibraryPage() {
     setShareNoteItem,
     createFolderModalOpen,
     setCreateFolderModalOpen,
+    deleteFolderTarget,
+    setDeleteFolderTarget,
+    confirmDeleteFolder,
   } = useStudyLibrary();
 
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
@@ -110,6 +115,7 @@ export default function StudyLibraryPage() {
           onSelectCategory={setCategoryFilter}
           onSelectFolder={setSelectFolder}
           onCreateFolderClick={() => setCreateFolderModalOpen(true)}
+          onDeleteFolderClick={setDeleteFolderTarget}
           storageStats={storageStats}
         />
 
@@ -314,6 +320,12 @@ export default function StudyLibraryPage() {
         folders={folders}
         onClose={() => setMoveNoteItem(null)}
         onMoveConfirm={moveNote}
+      />
+      <DeleteFolderModal
+        folder={deleteFolderTarget}
+        folders={folders}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirmDelete={confirmDeleteFolder}
       />
     </div>
   );

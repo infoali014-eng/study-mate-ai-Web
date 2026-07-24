@@ -31,7 +31,7 @@ export class LibraryService {
     } else if (filters.category === "docs") {
       query = query.or("mime_type.ilike.%word%,mime_type.ilike.%document%,mime_type.ilike.%text%");
     } else if (filters.category === "slides") {
-      query = query.or("mime_type.ilike.%presentation%,mime_type.ilike.%powerpoint%");
+      query = query.or("mime_type.ilike.%presentation%,mime_type.ilike.%powerpoint%,original_filename.ilike.%.ppt,original_filename.ilike.%.pptx");
     } else if (filters.category === "images") {
       query = query.ilike("mime_type", "%image%");
     }
@@ -127,6 +127,57 @@ export class LibraryService {
     }
 
     return data;
+  }
+
+  /**
+   * Moves all notes inside a folder to another target folder (or null for root library).
+   */
+  static async moveFolderContents(sourceFolderId: string, targetFolderId: string | null): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    const { error } = await (supabase as any)
+      .from("notes")
+      .update({ folder_id: targetFolderId })
+      .eq("folder_id", sourceFolderId);
+
+    if (error) {
+      console.error("[LibraryService] Error moving folder contents:", error);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Deletes a folder by ID.
+   */
+  static async deleteFolder(folderId: string, deleteNotesPermanently: boolean = false): Promise<boolean> {
+    const supabase = getSupabaseClient();
+
+    if (deleteNotesPermanently) {
+      const { data: folderNotes } = await (supabase as any)
+        .from("notes")
+        .select("id")
+        .eq("folder_id", folderId);
+
+      if (folderNotes && folderNotes.length > 0) {
+        for (const note of folderNotes) {
+          await LibraryService.deleteNote(note.id);
+        }
+      }
+    } else {
+      await LibraryService.moveFolderContents(folderId, null);
+    }
+
+    const { error } = await (supabase as any)
+      .from("folders")
+      .delete()
+      .eq("id", folderId);
+
+    if (error) {
+      console.error("[LibraryService] Error deleting folder:", error);
+      return false;
+    }
+
+    return true;
   }
 
   /**

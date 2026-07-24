@@ -13,6 +13,7 @@ import {
   Users,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { Folder, FileCategoryFilter, StorageUsageStats } from "@/types/library.types";
 import StorageUsageCard from "./StorageUsageCard";
@@ -24,6 +25,7 @@ interface LibrarySidebarProps {
   onSelectCategory: (category: FileCategoryFilter) => void;
   onSelectFolder: (folderId: string | null) => void;
   onCreateFolderClick: () => void;
+  onDeleteFolderClick?: (folder: Folder) => void;
   storageStats: StorageUsageStats;
 }
 
@@ -34,6 +36,7 @@ export default function LibrarySidebar({
   onSelectCategory,
   onSelectFolder,
   onCreateFolderClick,
+  onDeleteFolderClick,
   storageStats,
 }: LibrarySidebarProps) {
   const [personalExpanded, setPersonalExpanded] = useState(true);
@@ -125,15 +128,14 @@ export default function LibrarySidebar({
                 personalFolders.map((f) => {
                   const isActive = activeFolderId === f.id;
                   return (
-                    <button
+                    <div
                       key={f.id}
-                      type="button"
-                      onClick={() => onSelectFolder(f.id)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[8px] text-xs font-medium transition-colors cursor-pointer ${
+                      className={`group/folder w-full flex items-center justify-between px-2.5 py-1.5 rounded-[8px] text-xs font-medium transition-colors cursor-pointer ${
                         isActive
                           ? "bg-[#219EBC] text-white font-bold"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
+                      onClick={() => onSelectFolder(f.id)}
                     >
                       <div className="flex items-center gap-2 truncate">
                         <FolderIcon
@@ -142,16 +144,33 @@ export default function LibrarySidebar({
                         />
                         <span className="truncate">{f.name}</span>
                       </div>
-                      {f.note_count !== undefined && f.note_count > 0 && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                            isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {f.note_count}
-                        </span>
-                      )}
-                    </button>
+                      <div className="flex items-center gap-1">
+                        {f.note_count !== undefined && f.note_count > 0 && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                              isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {f.note_count}
+                          </span>
+                        )}
+                        {onDeleteFolderClick && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteFolderClick(f);
+                            }}
+                            className={`p-1 rounded-[4px] opacity-0 group-hover/folder:opacity-100 transition-opacity cursor-pointer ${
+                              isActive ? "hover:bg-white/20 text-white" : "hover:bg-slate-200 text-slate-400 hover:text-rose-600"
+                            }`}
+                            title="Delete folder"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   );
                 })
               )}

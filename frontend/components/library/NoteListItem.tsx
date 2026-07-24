@@ -2,10 +2,6 @@
 
 import React, { useState } from "react";
 import {
-  FileText,
-  FileCode,
-  Presentation,
-  Image as ImageIcon,
   Star,
   MoreVertical,
   Eye,
@@ -19,9 +15,13 @@ import {
   Calendar,
   Share2,
   Trash2,
+  CheckCircle2,
+  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { Note } from "@/types/library.types";
 import { DropdownMenuWrapper } from "@/components/ui/DropdownMenuWrapper";
+import { getFileIcon } from "@/utils/filePreview";
 
 interface NoteListItemProps {
   note: Note;
@@ -46,23 +46,40 @@ export default function NoteListItem({
 }: NoteListItemProps) {
   const [downloading, setDownloading] = useState(false);
 
-  const getFileIcon = (mimeType: string) => {
-    const m = (mimeType || "").toLowerCase();
-    if (m.includes("pdf")) return <FileText className="w-4 h-4 text-[#219EBC]" />;
-    if (m.includes("word") || m.includes("document") || m.includes("text"))
-      return <FileCode className="w-4 h-4 text-[#FB8500]" />;
-    if (m.includes("presentation") || m.includes("powerpoint"))
-      return <Presentation className="w-4 h-4 text-[#FFB703]" />;
-    if (m.includes("image")) return <ImageIcon className="w-4 h-4 text-[#38BDF8]" />;
-    return <FileText className="w-4 h-4 text-slate-500" />;
-  };
-
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 KB";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
+  const getAIBadge = (status: string) => {
+    switch (status) {
+      case "processing":
+      case "extracting_text":
+      case "embedding":
+      case "summarizing":
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-50 text-[#219EBC] border border-cyan-200 animate-pulse">
+            <Sparkles className="w-3 h-3 animate-spin" /> Processing
+          </span>
+        );
+      case "failed":
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">
+            <AlertTriangle className="w-3 h-3" /> Failed
+          </span>
+        );
+      case "completed":
+      case "ready":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3" /> Ready
+          </span>
+        );
+    }
   };
 
   const handleDownload = async () => {
@@ -143,7 +160,7 @@ export default function NoteListItem({
         </button>
 
         <div className="w-8 h-8 rounded-[8px] bg-slate-100 flex items-center justify-center shrink-0">
-          {getFileIcon(note.mime_type)}
+          {getFileIcon(note.mime_type, note.original_filename, "w-4 h-4")}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -168,9 +185,7 @@ export default function NoteListItem({
       <div className="hidden sm:flex items-center gap-4 text-xs text-slate-500 font-medium shrink-0">
         <span>{formatFileSize(note.file_size)}</span>
         <span>{new Date(note.created_at).toLocaleDateString()}</span>
-        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-          Ready
-        </span>
+        <div>{getAIBadge(note.ai_status)}</div>
       </div>
 
       {/* Context Menu */}

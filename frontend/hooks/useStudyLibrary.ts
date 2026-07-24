@@ -159,6 +159,33 @@ export function useStudyLibrary() {
     },
   });
 
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<Folder | null>(null);
+
+  // 9. Delete Folder Mutation
+  const deleteFolderMutation = useMutation({
+    mutationFn: async ({
+      folderId,
+      action,
+      targetFolderId,
+    }: {
+      folderId: string;
+      action: "move_root" | "move_target" | "delete_notes";
+      targetFolderId?: string | null;
+    }) => {
+      if (action === "move_target" && targetFolderId) {
+        await LibraryService.moveFolderContents(folderId, targetFolderId);
+        await LibraryService.deleteFolder(folderId, false);
+      } else if (action === "delete_notes") {
+        await LibraryService.deleteFolder(folderId, true);
+      } else {
+        await LibraryService.deleteFolder(folderId, false);
+      }
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
   // Handlers
   const handleFileUpload = (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -231,5 +258,12 @@ export function useStudyLibrary() {
     setShareNoteItem,
     createFolderModalOpen,
     setCreateFolderModalOpen,
+    deleteFolderTarget,
+    setDeleteFolderTarget,
+    confirmDeleteFolder: (
+      folderId: string,
+      action: "move_root" | "move_target" | "delete_notes",
+      targetFolderId?: string | null
+    ) => deleteFolderMutation.mutateAsync({ folderId, action, targetFolderId }),
   };
 }

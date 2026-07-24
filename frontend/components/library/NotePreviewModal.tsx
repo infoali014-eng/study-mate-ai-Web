@@ -8,11 +8,11 @@ import {
   Layers,
   Calendar,
   Sparkles,
-  FileText,
   ExternalLink,
 } from "lucide-react";
 import { Note, NoteContentChunk } from "@/types/library.types";
 import { LibraryService } from "@/services/libraryService";
+import { isImageFile, getFileIcon } from "@/utils/filePreview";
 
 interface NotePreviewModalProps {
   note: Note | null;
@@ -59,8 +59,8 @@ export default function NotePreviewModal({ note, onClose }: NotePreviewModalProp
 
   if (!note) return null;
 
-  const isPdf = note.mime_type.includes("pdf");
-  const isImage = note.mime_type.includes("image");
+  const isImage = isImageFile(note.mime_type, note.original_filename);
+  const isPdf = note.mime_type.includes("pdf") || note.original_filename.toLowerCase().endsWith(".pdf");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs select-none animate-in fade-in-50">
@@ -68,8 +68,8 @@ export default function NotePreviewModal({ note, onClose }: NotePreviewModalProp
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-[#F8FAFC]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-[12px] bg-[#219EBC]/10 text-[#219EBC] flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-[12px] bg-[#219EBC]/10 flex items-center justify-center shrink-0">
+              {getFileIcon(note.mime_type, note.original_filename, "w-5 h-5")}
             </div>
             <div className="min-w-0">
               <h2 className="text-base font-extrabold text-slate-900 truncate">{note.title}</h2>
@@ -143,6 +143,7 @@ export default function NotePreviewModal({ note, onClose }: NotePreviewModalProp
                   title="PDF Note Preview"
                 />
               ) : isImage && signedUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={signedUrl}
                   alt={note.title}
@@ -150,7 +151,9 @@ export default function NotePreviewModal({ note, onClose }: NotePreviewModalProp
                 />
               ) : (
                 <div className="text-center space-y-4 py-12">
-                  <FileText className="w-12 h-12 text-[#219EBC] mx-auto" />
+                  <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto">
+                    {getFileIcon(note.mime_type, note.original_filename, "w-8 h-8")}
+                  </div>
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900">Document Ready</h3>
                     <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">

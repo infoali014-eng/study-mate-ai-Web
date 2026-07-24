@@ -9,11 +9,16 @@ const ALLOWED_MIME_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "application/vnd.ms-powerpoint",
+  "application/powerpoint",
   "text/plain",
   "image/png",
   "image/jpeg",
   "image/jpg",
   "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "image/bmp",
+  "image/avif",
 ];
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -36,13 +41,13 @@ export async function POST(req: NextRequest) {
     // Step 1: Validate file format & max size
     const isMimeAllowed =
       ALLOWED_MIME_TYPES.includes(mimeType) ||
-      /\.(pdf|docx|doc|pptx|ppt|txt|png|jpg|jpeg|webp)$/i.test(file.name);
+      /\.(pdf|docx|doc|pptx|ppt|txt|png|jpg|jpeg|webp|gif|svg|bmp|avif)$/i.test(file.name);
 
     if (!isMimeAllowed) {
       return NextResponse.json(
         {
           error:
-            "Unsupported file type. Only PDF, DOCX, PPTX, TXT, and Images (PNG, JPG, WEBP) are supported.",
+            "Unsupported file type. Only PDF, DOCX, PPT, PPTX, TXT, and Images (PNG, JPG, WEBP, GIF, SVG, BMP, AVIF) are supported.",
         },
         { status: 400 }
       );
@@ -121,6 +126,8 @@ export async function POST(req: NextRequest) {
       estimatedPageCount = Math.max(1, Math.round(fileSize / 45000));
     } else if (mimeType.includes("word") || mimeType.includes("officedocument")) {
       estimatedPageCount = Math.max(1, Math.round(fileSize / 25000));
+    } else if (mimeType.includes("presentation") || mimeType.includes("powerpoint") || /\.(ppt|pptx)$/i.test(originalFilename)) {
+      estimatedPageCount = Math.max(1, Math.round(fileSize / 65000));
     }
 
     // Step 5: Save metadata inside Supabase (file_key ONLY, NO permanent URLs)
@@ -144,9 +151,9 @@ export async function POST(req: NextRequest) {
         file_size: fileSize,
         page_count: estimatedPageCount,
         current_version: 1,
-        ai_status: "extracting_text",
+        ai_status: "completed", // Immediately set to Ready status
         is_favorite: false,
-        summary: `Document "${title}" uploaded. Ready for AI processing.`,
+        summary: `Document "${title}" uploaded. Ready for study tools.`,
       })
       .select()
       .single();

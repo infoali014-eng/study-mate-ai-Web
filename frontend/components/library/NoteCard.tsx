@@ -1,11 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  FileText,
-  FileCode,
-  Presentation,
-  Image as ImageIcon,
   Star,
   MoreVertical,
   Eye,
@@ -25,6 +21,8 @@ import {
 } from "lucide-react";
 import { Note } from "@/types/library.types";
 import { DropdownMenuWrapper } from "@/components/ui/DropdownMenuWrapper";
+import { isImageFile, getFileIcon } from "@/utils/filePreview";
+import { LibraryService } from "@/services/libraryService";
 
 interface NoteCardProps {
   note: Note;
@@ -48,17 +46,18 @@ export default function NoteCard({
   onDelete,
 }: NoteCardProps) {
   const [downloading, setDownloading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
-  const getFileIcon = (mimeType: string) => {
-    const m = (mimeType || "").toLowerCase();
-    if (m.includes("pdf")) return <FileText className="w-5 h-5 text-[#219EBC]" />;
-    if (m.includes("word") || m.includes("document") || m.includes("text"))
-      return <FileCode className="w-5 h-5 text-[#FB8500]" />;
-    if (m.includes("presentation") || m.includes("powerpoint"))
-      return <Presentation className="w-5 h-5 text-[#FFB703]" />;
-    if (m.includes("image")) return <ImageIcon className="w-5 h-5 text-[#38BDF8]" />;
-    return <FileText className="w-5 h-5 text-slate-500" />;
-  };
+  const isImg = isImageFile(note.mime_type, note.original_filename);
+
+  useEffect(() => {
+    if (isImg) {
+      LibraryService.getSignedUrl(note.file_key, 3600).then((url) => {
+        if (url) setImageUrl(url);
+      });
+    }
+  }, [note.file_key, note.mime_type, note.original_filename, isImg]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return "0 KB";
@@ -70,18 +69,13 @@ export default function NoteCard({
 
   const getAIBadge = (status: string) => {
     switch (status) {
-      case "completed":
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3" /> Ready
-          </span>
-        );
+      case "processing":
       case "extracting_text":
       case "embedding":
       case "summarizing":
         return (
           <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-50 text-[#219EBC] border border-cyan-200 animate-pulse">
-            <Sparkles className="w-3 h-3 animate-spin" /> Processing AI
+            <Sparkles className="w-3 h-3 animate-spin" /> Processing
           </span>
         );
       case "failed":
@@ -90,10 +84,12 @@ export default function NoteCard({
             <AlertTriangle className="w-3 h-3" /> Failed
           </span>
         );
+      case "completed":
+      case "ready":
       default:
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-            Uploaded
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3" /> Ready
           </span>
         );
     }
@@ -199,13 +195,31 @@ export default function NoteCard({
 
   return (
     <div className="group bg-white rounded-[16px] border border-slate-200/90 hover:border-[#219EBC]/60 p-4 shadow-xs hover:shadow-md transition-all duration-180 flex flex-col justify-between select-none">
-      {/* Top Header Row */}
+      {/* Top Content Row */}
       <div>
+        {/* Task 1: Image Thumbnail Header if file is image */}
+        {isImg && imageUrl && !imageError ? (
+          <div
+            onClick={() => onPreview(note)}
+            className="relative w-full h-32 mb-3 rounded-[12px] overflow-hidden bg-slate-100 border border-slate-200/60 flex items-center justify-center cursor-pointer"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={note.title}
+              onError={() => setImageError(true)}
+              className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-200"
+            />
+          </div>
+        ) : null}
+
         <div className="flex items-start justify-between gap-3 mb-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 rounded-[12px] bg-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              {getFileIcon(note.mime_type)}
-            </div>
+            {(!isImg || !imageUrl || imageError) && (
+              <div className="w-10 h-10 rounded-[12px] bg-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                {getFileIcon(note.mime_type, note.original_filename)}
+              </div>
+            )}
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h3
