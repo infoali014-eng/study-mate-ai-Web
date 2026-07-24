@@ -147,7 +147,8 @@ export class StreakService {
       const rec = recordsMap.get(dateStr);
       const isToday = dateStr === todayStr;
       const isFuture = dateStr > todayStr;
-      const isCompleted = rec ? rec.completed || rec.total_points >= MAX_DAILY_POINTS : false;
+      // Streak completes on ANY activity (points > 0)
+      const isCompleted = rec ? rec.completed || rec.total_points > 0 : false;
       const isMissed = !isFuture && !isToday && !isCompleted;
 
       return {
@@ -159,13 +160,17 @@ export class StreakService {
         isFuture,
         isMissed,
         points: rec ? rec.total_points : 0,
+        chatPoints: rec ? rec.chat_points : 0,
+        sessionPoints: rec ? rec.session_points : 0,
+        uploadPoints: rec ? rec.upload_points : 0,
+        previewPoints: rec ? rec.preview_points : 0,
       };
     });
   }
 
   /**
    * Records an activity action and updates daily score & streak.
-   * Returns newlyCompleted: true if total points reached 100 for the first time today.
+   * Streak updates if ANY activity is completed!
    */
   static async recordActivity(
     type: StreakActivityType
@@ -242,7 +247,8 @@ export class StreakService {
       MAX_DAILY_POINTS,
       chatPts + sessionPts + uploadPts + previewPts
     );
-    const isNowCompleted = newTotalPoints >= MAX_DAILY_POINTS;
+    // Any activity (total points > 0) qualifies today as completed for streak!
+    const isNowCompleted = newTotalPoints > 0;
 
     // 3. Update daily_activity row
     await (supabase as any)

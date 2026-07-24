@@ -32,6 +32,10 @@ export interface DayActivityStatus {
   isFuture: boolean;
   isMissed: boolean;
   points: number;
+  chatPoints?: number;
+  sessionPoints?: number;
+  uploadPoints?: number;
+  previewPoints?: number;
 }
 
 export type StreakActivityType = "chat" | "session" | "upload" | "preview";

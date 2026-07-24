@@ -2,22 +2,29 @@
 
 import React from "react";
 import { Check } from "lucide-react";
-import { UserStreak } from "../types/streak.types";
+import { UserStreak, DayActivityStatus } from "../types/streak.types";
 
 interface TodayProgressProps {
   streak: UserStreak;
+  weeklyHistory?: DayActivityStatus[];
 }
 
-export default function TodayProgress({ streak }: TodayProgressProps) {
-  // Check completion states based on points accumulated today
-  const points = streak.today_points || 0;
+export default function TodayProgress({ streak, weeklyHistory = [] }: TodayProgressProps) {
+  // Find today's activity status item from weekly history
+  const todayRecord = weeklyHistory.find((d) => d.isToday);
 
-  // Checklist items mapping to scoring rules
+  const points = todayRecord?.points ?? streak.today_points ?? 0;
+  const chatDone = (todayRecord?.chatPoints ?? 0) > 0;
+  const sessionDone = (todayRecord?.sessionPoints ?? 0) > 0;
+  const uploadDone = (todayRecord?.uploadPoints ?? 0) > 0;
+  const previewDone = (todayRecord?.previewPoints ?? 0) > 0;
+
+  // Checklist items mapping directly to specific activity completions
   const tasks = [
-    { id: "chat", label: "Chat with Mr Owl", pts: 30, completed: points >= 30 },
-    { id: "session", label: "Stayed 10 Minutes", pts: 20, completed: points >= 50 || (points >= 20 && points % 30 === 20) },
-    { id: "upload", label: "Upload Note", pts: 30, completed: points >= 80 || (points >= 30 && points % 20 === 10) },
-    { id: "preview", label: "Open Note", pts: 20, completed: points >= 100 || points % 20 === 0 && points > 0 },
+    { id: "chat", label: "Chat with Mr Owl", pts: 30, completed: chatDone },
+    { id: "session", label: "Stayed 10 Minutes", pts: 20, completed: sessionDone },
+    { id: "upload", label: "Upload Note", pts: 30, completed: uploadDone },
+    { id: "preview", label: "Open Note", pts: 20, completed: previewDone },
   ];
 
   return (

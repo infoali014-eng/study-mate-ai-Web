@@ -71,7 +71,7 @@ export default function StreakPopover({
       <StreakStats streak={streak} />
 
       {/* Section 4: Today's Progress Checklist */}
-      <TodayProgress streak={streak} />
+      <TodayProgress streak={streak} weeklyHistory={weeklyHistory} />
     </div>
   );
 }
