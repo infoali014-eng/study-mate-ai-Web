@@ -19,3 +19,7 @@ export const supabase = createBrowserClient<Database>(
   supabaseUrl || "https://placeholder-project.supabase.co",
   supabaseAnonKey || "placeholder-anon-key"
 );
+
+export function getSupabaseClient() {
+  return supabase;
+}

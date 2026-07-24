@@ -26,10 +26,19 @@ export default function CreateButton({ collapsed = false }: CreateButtonProps) {
     setMounted(true);
   }, []);
 
-  const updateCoords = () => {
+  const updateCoords = useCallback(() => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      if (collapsed) {
+      const viewportWidth = window.innerWidth;
+      const isMobile = viewportWidth < 768;
+
+      if (isMobile) {
+        setCoords({
+          top: rect.bottom + 6,
+          left: Math.max(16, Math.min(rect.left, viewportWidth - 276)),
+          width: 260,
+        });
+      } else if (collapsed) {
         setCoords({
           top: rect.top,
           left: rect.right + 10,
@@ -43,7 +52,7 @@ export default function CreateButton({ collapsed = false }: CreateButtonProps) {
         });
       }
     }
-  };
+  }, [collapsed]);
 
   const handleToggle = () => {
     if (!isOpen) {
@@ -93,7 +102,7 @@ export default function CreateButton({ collapsed = false }: CreateButtonProps) {
       window.removeEventListener("resize", handleScrollOrResize);
       window.removeEventListener("scroll", handleScrollOrResize, true);
     };
-  }, [isOpen]);
+  }, [isOpen, updateCoords]);
 
   const dropdownContent = (
     <AnimatePresence>

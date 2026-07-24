@@ -56,7 +56,7 @@ export const CREATE_MENU_OPTIONS: CreateOption[] = [
     id: "upload_notes",
     title: "Upload Notes",
     description: "Add PDFs, DOCX or PPTX",
-    href: "/library?action=upload",
+    href: "/dashboard/library?action=upload",
     icon: Upload,
   },
   {
@@ -84,7 +84,7 @@ export const CREATE_MENU_OPTIONS: CreateOption[] = [
     id: "create_folder",
     title: "Create Folder",
     description: "Organize your subjects",
-    href: "/library?action=new_folder",
+    href: "/dashboard/library?action=new_folder",
     icon: FolderPlus,
   },
 ];
@@ -103,7 +103,7 @@ export const DASHBOARD_NAVIGATION: NavSection[] = [
       {
         id: "library",
         title: "Study Library",
-        href: "/library",
+        href: "/dashboard/library",
         icon: LibraryBig,
       },
       {

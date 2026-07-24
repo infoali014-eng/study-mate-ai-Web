@@ -6,8 +6,6 @@ import { useOwlStore } from "@/store/owlStore";
 import { OWL_MESSAGES } from "@/components/owl/owlMessages";
 import AuthCard from "@/components/auth/AuthCard";
 
-import { MrOwlLogoIcon } from "@/components/layout/Logo";
-
 interface AuthLayoutProps {
   children: React.ReactNode;
 }
