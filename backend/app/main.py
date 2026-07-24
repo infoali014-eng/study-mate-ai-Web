@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.onboarding import router as onboarding_router
 
 app = FastAPI(
-    title="StudyMate AI",
+    title="Mr Owl AI",
     description="Learn Smarter. Revise Faster. Prepare Better.",
     version="0.1.0",
 )

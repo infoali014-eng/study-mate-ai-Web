@@ -159,7 +159,7 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
             animate={animState}
             style={{ originX: "70px", originY: "115px" }}
           >
-            <ellipse cx="55" cy="130" rx="22" ry="38" fill="#8B5E34" />
+            <ellipse cx="55" cy="130" rx="22" ry="38" fill="#0077B6" />
           </motion.g>
 
           {/* Right wing (behind body) */}
@@ -168,35 +168,35 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
             animate={animState}
             style={{ originX: "130px", originY: "115px" }}
           >
-            <ellipse cx="145" cy="130" rx="22" ry="38" fill="#8B5E34" />
+            <ellipse cx="145" cy="130" rx="22" ry="38" fill="#0077B6" />
           </motion.g>
 
           {/* Feet */}
-          <rect x="82" y="182" width="8" height="10" rx="3" fill="#F0932B" />
-          <rect x="110" y="182" width="8" height="10" rx="3" fill="#F0932B" />
+          <rect x="82" y="182" width="8" height="10" rx="3" fill="#0077B6" />
+          <rect x="110" y="182" width="8" height="10" rx="3" fill="#0077B6" />
 
           {/* Body */}
-          <ellipse cx="100" cy="130" rx="55" ry="60" fill="#A97845" />
-          {/* Belly */}
-          <ellipse cx="100" cy="140" rx="38" ry="42" fill="#F3E3C3" />
+          <ellipse cx="100" cy="130" rx="55" ry="60" fill="#0096C7" />
+          {/* Belly / Open Book motif */}
+          <ellipse cx="100" cy="140" rx="38" ry="42" fill="#E0F2FE" />
           {/* Belly feather lines */}
-          <path d="M80 120 Q100 128 120 120" stroke="#E2CBA0" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-          <path d="M78 138 Q100 146 122 138" stroke="#E2CBA0" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-          <path d="M80 156 Q100 164 120 156" stroke="#E2CBA0" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <path d="M80 120 Q100 128 120 120" stroke="#38BDF8" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <path d="M78 138 Q100 146 122 138" stroke="#38BDF8" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <path d="M80 156 Q100 164 120 156" stroke="#38BDF8" strokeWidth="2.5" fill="none" strokeLinecap="round" />
 
           {/* Ear tufts */}
-          <path d="M60 65 Q65 40 78 58 Z" fill="#8B5E34" />
-          <path d="M140 65 Q135 40 122 58 Z" fill="#8B5E34" />
+          <path d="M60 65 Q65 40 78 58 Z" fill="#0077B6" />
+          <path d="M140 65 Q135 40 122 58 Z" fill="#0077B6" />
 
           {/* Head */}
-          <circle cx="100" cy="85" r="52" fill="#A97845" />
+          <circle cx="100" cy="85" r="52" fill="#0096C7" />
 
           {/* Eyebrows */}
           <motion.path
             variants={eyebrowVariants}
             animate={animState}
             d="M62 55 Q75 46 88 54"
-            stroke="#5C3D22"
+            stroke="#0B2545"
             strokeWidth="4"
             fill="none"
             strokeLinecap="round"
@@ -205,30 +205,32 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
             variants={eyebrowVariants}
             animate={animState}
             d="M112 54 Q125 46 138 55"
-            stroke="#5C3D22"
+            stroke="#0B2545"
             strokeWidth="4"
             fill="none"
             strokeLinecap="round"
           />
 
           {/* Eye whites */}
-          <circle cx="78" cy="82" r="26" fill="#FBF6EC" />
-          <circle cx="122" cy="82" r="26" fill="#FBF6EC" />
+          <circle cx="78" cy="82" r="26" fill="#FFFFFF" />
+          <circle cx="122" cy="82" r="26" fill="#FFFFFF" />
 
-          {/* Eyes: teal iris + pupil, collapse to a lid line when blinking */}
+          {/* Eyes: deep navy iris + pupil with 2 shine spots each */}
           {eyesClosed ? (
             <>
-              <path d="M64 82 Q78 88 92 82" stroke="#5C3D22" strokeWidth="4" fill="none" strokeLinecap="round" />
-              <path d="M108 82 Q122 88 136 82" stroke="#5C3D22" strokeWidth="4" fill="none" strokeLinecap="round" />
+              <path d="M64 82 Q78 88 92 82" stroke="#0B2545" strokeWidth="4" fill="none" strokeLinecap="round" />
+              <path d="M108 82 Q122 88 136 82" stroke="#0B2545" strokeWidth="4" fill="none" strokeLinecap="round" />
             </>
           ) : (
             <>
-              <circle cx="78" cy="82" r="16" fill="#1F7A73" />
-              <circle cx="122" cy="82" r="16" fill="#1F7A73" />
-              <circle cx="78" cy="82" r="8" fill="#132B28" />
-              <circle cx="122" cy="82" r="8" fill="#132B28" />
-              <circle cx="82" cy="77" r="3" fill="#FFFFFF" />
-              <circle cx="126" cy="77" r="3" fill="#FFFFFF" />
+              <circle cx="78" cy="82" r="16" fill="#00B4D8" />
+              <circle cx="122" cy="82" r="16" fill="#00B4D8" />
+              <circle cx="78" cy="82" r="10" fill="#0B2545" />
+              <circle cx="122" cy="82" r="10" fill="#0B2545" />
+              <circle cx="74" cy="77" r="3.5" fill="#FFFFFF" />
+              <circle cx="81" cy="85" r="1.5" fill="#FFFFFF" />
+              <circle cx="118" cy="77" r="3.5" fill="#FFFFFF" />
+              <circle cx="125" cy="85" r="1.5" fill="#FFFFFF" />
             </>
           )}
 
@@ -237,7 +239,7 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
             variants={beakVariants}
             animate={animState}
             d="M92 100 L108 100 L100 116 Z"
-            fill="#F0932B"
+            fill="#0B2545"
             style={{ originX: "100px", originY: "100px" }}
           />
         </motion.g>

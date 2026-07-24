@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "StudyMate AI Backend REST API"
+description = "Mr Owl AI Backend REST API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

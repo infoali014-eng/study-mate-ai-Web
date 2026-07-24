@@ -5,7 +5,7 @@ export const ONBOARDING_STEPS_COUNT = 11; // 1 Welcome + 9 Questions + 1 Complet
 export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
   {
     id: "welcome",
-    title: "Welcome to StudyMate AI",
+    title: "Welcome to Mr Owl AI",
     description: "Let's personalize your workspace to fit your studying needs. It only takes a minute.",
     type: "welcome",
     required: true,
@@ -46,7 +46,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
   },
   {
     id: "goals",
-    title: "What would you like StudyMate AI to help you achieve?",
+    title: "What would you like Mr Owl AI to help you achieve?",
     description: "Pick as many goals as you'd like.",
     type: "multi",
     field: "primaryGoals",
@@ -63,7 +63,7 @@ export const ONBOARDING_QUESTIONS: OnboardingQuestion[] = [
   {
     id: "heard_from",
     title: "How did you hear about us?",
-    description: "Help us understand how you found StudyMate AI.",
+    description: "Help us understand how you found Mr Owl AI.",
     type: "single",
     field: "heardFrom",
     required: true,

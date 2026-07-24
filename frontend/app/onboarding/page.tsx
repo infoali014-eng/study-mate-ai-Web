@@ -17,46 +17,47 @@ export default function OnboardingPage() {
         console.log("[Onboarding] Starting verification check...");
         setDebugMsg("Checking auth session...");
         
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        if (sessionError) {
-          console.error("[Onboarding] Session error:", sessionError);
-          setDebugMsg("Session error: " + sessionError.message);
+        if (userError) {
+          console.error("[Onboarding] User auth error:", userError);
+          setDebugMsg("Auth error: " + userError.message);
         }
 
-        if (!session) {
-          console.log("[Onboarding] No active session found, redirecting to login...");
+        if (!user) {
+          console.log("[Onboarding] No active user session found, redirecting to login...");
           router.push("/login");
           return;
         }
 
-        console.log("[Onboarding] Session active for user:", session.user.id);
+        console.log("[Onboarding] Session active for user:", user.id);
         setDebugMsg("Verifying onboarding status...");
 
-        const response = (await supabase
+        const { data: onboarding, error: obError } = (await supabase
           .from("user_onboarding")
           .select("completed")
-          .eq("user_id", session.user.id)
-          .single()) as unknown as { data: { completed: boolean } | null; error: unknown };
+          .eq("user_id", user.id)
+          .maybeSingle()) as { data: { completed: boolean } | null; error: unknown };
 
-        if (response.error) {
-          console.warn("[Onboarding] Onboarding table check returned error:", response.error);
+        if (obError) {
+          console.warn("[Onboarding Guard] Onboarding lookup error (treating as incomplete):", obError);
         }
 
-        const onboarding = response.data;
-        console.log("[Onboarding] Onboarding completion state:", onboarding);
+        const isCompleted = onboarding?.completed ?? false;
+        console.log("[Onboarding Guard] Onboarding completed state:", isCompleted);
 
-        if (onboarding?.completed) {
-          console.log("[Onboarding] Already completed, redirecting to dashboard...");
+        if (isCompleted) {
+          console.log("[Onboarding Guard] Onboarding completed -> Redirecting to /dashboard");
           router.push("/dashboard");
         } else {
-          console.log("[Onboarding] Incomplete onboarding, rendering wizard...");
+          console.log("[Onboarding Guard] Onboarding incomplete -> Rendering onboarding wizard");
           setVerifying(false);
         }
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
-        console.error("[Onboarding] Unexpected error during verification:", errMsg);
+        console.error("[Onboarding Guard] Unexpected error during verification:", errMsg);
         setDebugMsg("Unexpected error: " + errMsg);
+        // Fallback: allow user to complete onboarding wizard instead of sticking in verifying state
         setVerifying(false);
       }
     };

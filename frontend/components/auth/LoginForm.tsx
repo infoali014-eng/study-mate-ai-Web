@@ -35,27 +35,52 @@ export default function LoginForm() {
         setTimeout(() => reject(new Error("Request timed out. Please check your network connection.")), 10000)
       );
 
-      const { error } = (await Promise.race([
+      const { data: authData, error } = (await Promise.race([
         supabase.auth.signInWithPassword({
           email: data.email,
           password: data.password,
         }),
         requestTimeout
-      ])) as { error: { message: string } | null };
+      ])) as { data: { user: { id: string } | null; session: { user: { id: string } } | null } | null; error: { message: string } | null };
 
       if (error) {
         toast.error(error.message);
         say(OWL_MESSAGES.error.text, OWL_MESSAGES.error.mood);
         setLoading(false);
-      } else {
-        toast.success("Successfully logged in!");
-        say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
-        setTimeout(() => {
-          router.push("/onboarding");
-        }, 1500);
+        return;
       }
+
+      const user = authData?.user || authData?.session?.user || (await supabase.auth.getUser()).data.user;
+      console.log("[Auth] Login success. Auth session detected for user ID:", user?.id);
+
+      toast.success("Successfully logged in!");
+      say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
+
+      let isCompleted = false;
+      if (user?.id) {
+        console.log("[Auth] Querying onboarding status...");
+        const { data: onboarding, error: obError } = (await supabase
+          .from("user_onboarding")
+          .select("completed")
+          .eq("user_id", user.id)
+          .maybeSingle()) as { data: { completed: boolean } | null; error: unknown };
+
+        if (obError) {
+          console.warn("[Auth] Onboarding lookup returned error (treating as incomplete):", obError);
+        } else {
+          isCompleted = onboarding?.completed ?? false;
+        }
+      }
+
+      console.log(`[Auth] Onboarding loaded value: completed=${isCompleted}`);
+      const targetRoute = isCompleted ? "/dashboard" : "/onboarding";
+      console.log(`[Auth] Redirect target: ${targetRoute}`);
+
+      router.refresh();
+      router.push(targetRoute);
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "An unexpected error occurred";
+      console.error("[Auth] Login error:", errMsg);
       toast.error(errMsg);
       say(OWL_MESSAGES.error.text, OWL_MESSAGES.error.mood);
       setLoading(false);
@@ -78,7 +103,7 @@ export default function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Welcome Back</h2>
-        <p className="text-sm text-muted-foreground">Log in to your StudyMate AI account</p>
+        <p className="text-sm text-muted-foreground">Log in to your Mr Owl AI account</p>
       </div>
 
       <div className="space-y-3">

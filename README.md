@@ -1,4 +1,4 @@
-# StudyMate AI
+# Mr Owl AI
 
 Learn Smarter. Revise Faster. Prepare Better.
 

@@ -55,11 +55,11 @@ export default function SignupForm() {
         say(OWL_MESSAGES.error.text, OWL_MESSAGES.error.mood);
         setLoading(false);
       } else {
+        console.log("[Auth] Signup success. Directing to /onboarding...");
         toast.success("Account created successfully!");
         say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
-        setTimeout(() => {
-          router.push("/onboarding");
-        }, 1500);
+        router.refresh();
+        router.push("/onboarding");
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -87,7 +87,7 @@ export default function SignupForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Create an Account</h2>
-        <p className="text-sm text-muted-foreground">Start learning smarter with StudyMate AI</p>
+        <p className="text-sm text-muted-foreground">Start learning smarter with Mr Owl AI</p>
       </div>
 
       <div className="space-y-3">

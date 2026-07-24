@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "StudyMate AI",
+  title: "Mr Owl AI",
   description: "Learn Smarter. Revise Faster. Prepare Better.",
 };
 

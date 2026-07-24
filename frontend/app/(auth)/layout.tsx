@@ -6,6 +6,8 @@ import { useOwlStore } from "@/store/owlStore";
 import { OWL_MESSAGES } from "@/components/owl/owlMessages";
 import AuthCard from "@/components/auth/AuthCard";
 
+import { MrOwlLogoIcon } from "@/components/layout/Logo";
+
 interface AuthLayoutProps {
   children: React.ReactNode;
 }
@@ -68,24 +70,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
         {/* Logo and Wordmark */}
         <div className="relative flex items-center gap-3 z-10 select-none">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-indigo-400/20">
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-white"
-            >
-              <path d="M4 19.5V15a2 2 0 0 1 2-2h14" />
-              <path d="M20 6v12a2 2 0 0 1-2 2H4" />
-              <path d="M12 6V3M9 3h6" />
-            </svg>
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">StudyMate AI</span>
+          <img src="/logo.png" alt="Mr Owl AI Logo" className="w-10 h-10 object-contain shrink-0" />
+          <span className="text-xl font-bold tracking-tight text-white">Mr Owl AI</span>
         </div>
 
         {/* Branding Value Prop */}
@@ -100,7 +86,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
         {/* Footer info */}
         <div className="relative z-10 text-xs text-neutral-500 font-medium">
-          &copy; {new Date().getFullYear()} StudyMate AI. All rights reserved.
+          &copy; {new Date().getFullYear()} Mr Owl AI. All rights reserved.
         </div>
       </div>
 
@@ -108,24 +94,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
       <div className="col-span-1 lg:col-span-7 flex flex-col items-center justify-center p-6 lg:p-12 relative overflow-y-auto">
         {/* Condensed Logo for Mobile/Tablet */}
         <div className="lg:hidden flex items-center gap-2 mb-8 select-none">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md">
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-white"
-            >
-              <path d="M4 19.5V15a2 2 0 0 1 2-2h14" />
-              <path d="M20 6v12a2 2 0 0 1-2 2H4" />
-              <path d="M12 6V3M9 3h6" />
-            </svg>
-          </div>
-          <span className="text-lg font-bold tracking-tight text-foreground">StudyMate AI</span>
+          <img src="/logo.png" alt="Mr Owl AI Logo" className="w-8 h-8 object-contain shrink-0" />
+          <span className="text-lg font-bold tracking-tight text-foreground">Mr Owl AI</span>
         </div>
 
         {/* Wrap form card with Mr. Owl and speech bubble rendering */}

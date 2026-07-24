@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { Database } from "./types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,8 +14,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   }
 }
 
-// Browser Singleton Client
-export const supabase = createClient<Database>(
+// Browser Singleton Client via official @supabase/ssr
+export const supabase = createBrowserClient<Database>(
   supabaseUrl || "https://placeholder-project.supabase.co",
   supabaseAnonKey || "placeholder-anon-key"
 );

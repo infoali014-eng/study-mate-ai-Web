@@ -23,12 +23,19 @@ import ExamStep from "./steps/ExamStep";
 import DashboardStep from "./steps/DashboardStep";
 import FinishStep from "./steps/FinishStep";
 
+import { Loader2 } from "lucide-react";
+
 export default function OnboardingWizard() {
   const router = useRouter();
   const store = useOnboardingStore();
+  const [mounted, setMounted] = useState(false);
   const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 1. Keyboard accessibility
   useEffect(() => {
@@ -187,6 +194,14 @@ export default function OnboardingWizard() {
       opacity: 0,
     }),
   };
+
+  if (!mounted) {
+    return (
+      <div className="w-full max-w-xl mx-auto min-h-[380px] flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl shadow-xl">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-xl mx-auto space-y-8 p-6 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl shadow-xl dark:shadow-black/20 select-none">
