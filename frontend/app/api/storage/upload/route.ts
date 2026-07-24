@@ -3,6 +3,21 @@ import crypto from "crypto";
 import { uploadFileToR2 } from "@/lib/storage/r2";
 import { createServerClient } from "@supabase/ssr";
 
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "text/plain",
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -12,23 +27,46 @@ export async function POST(req: NextRequest) {
     const userId = (formData.get("userId") as string) || null;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return NextResponse.json({ error: "No file provided for upload" }, { status: 400 });
+    }
+
+    const mimeType = file.type || "application/octet-stream";
+    const fileSize = file.size;
+
+    // Step 1: Validate file format & max size
+    const isMimeAllowed =
+      ALLOWED_MIME_TYPES.includes(mimeType) ||
+      /\.(pdf|docx|doc|pptx|ppt|txt|png|jpg|jpeg|webp)$/i.test(file.name);
+
+    if (!isMimeAllowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Unsupported file type. Only PDF, DOCX, PPTX, TXT, and Images (PNG, JPG, WEBP) are supported.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (fileSize > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File exceeds maximum allowed size of 50 MB.` },
+        { status: 400 }
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 1. Calculate SHA-256 hash for byte deduplication
+    // Step 2: Compute SHA-256 hash
     const hashSum = crypto.createHash("sha256");
     hashSum.update(buffer);
     const fileHash = hashSum.digest("hex");
 
-    const mimeType = file.type || "application/octet-stream";
-    const fileSize = file.size;
     const originalFilename = file.name;
     const title = customTitle || originalFilename.replace(/\.[^/.]+$/, "");
 
-    // Establish Supabase SSR server client
+    // Supabase SSR Client setup
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "",
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
@@ -38,15 +76,13 @@ export async function POST(req: NextRequest) {
             return req.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              req.cookies.set(name, value)
-            );
+            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
           },
         },
       }
     );
 
-    // Get current auth user ID if not provided explicitly
+    // Authenticate user
     let targetUserId = userId;
     if (!targetUserId) {
       const {
@@ -55,8 +91,10 @@ export async function POST(req: NextRequest) {
       targetUserId = user?.id || "00000000-0000-0000-0000-000000000000";
     }
 
-    // 2. Check for byte deduplication in DB
-    const { data: existingHashNote } = await supabase
+    // Step 3: Check Supabase for existing file_hash for deduplication
+    const { data: existingHashNote } = await (supabase as unknown as {
+      from: (t: string) => { select: (cols: string) => { eq: (k: string, v: string) => { limit: (n: number) => { maybeSingle: () => Promise<{ data: { file_key: string } | null }> } } } };
+    })
       .from("notes")
       .select("file_key")
       .eq("file_hash", fileHash)
@@ -64,21 +102,20 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     let fileKey: string;
+    const noteId = crypto.randomUUID();
+    const fileExt = originalFilename.split(".").pop() || "bin";
 
     if (existingHashNote && existingHashNote.file_key) {
-      // Reuse existing R2 fileKey — NO byte duplication in Cloudflare R2!
+      // Reuse existing physical object in Cloudflare R2
       fileKey = existingHashNote.file_key;
-      console.log(`[R2 Deduplication] Reusing physical key "${fileKey}" for hash ${fileHash.slice(0, 8)}...`);
+      console.log(`[R2 Deduplication] Reusing physical R2 object "${fileKey}" for hash ${fileHash.slice(0, 8)}...`);
     } else {
-      // Generate clean permanent file_key (NO file_url hardcoded!)
-      const sanitizedFilename = originalFilename.replace(/[^a-zA-Z0-9.-]/g, "_");
-      fileKey = `users/${targetUserId}/notes/${Date.now()}_${sanitizedFilename}`;
-
-      // Upload physical binary to R2
+      // Step 4: Upload new physical file to R2 structure: users/{userId}/notes/{noteId}/original.{ext}
+      fileKey = `users/${targetUserId}/notes/${noteId}/original.${fileExt}`;
       await uploadFileToR2(fileKey, buffer, mimeType);
     }
 
-    // Rough page count estimator based on file size and mime type
+    // Page count estimate
     let estimatedPageCount = 1;
     if (mimeType.includes("pdf")) {
       estimatedPageCount = Math.max(1, Math.round(fileSize / 45000));
@@ -86,66 +123,61 @@ export async function POST(req: NextRequest) {
       estimatedPageCount = Math.max(1, Math.round(fileSize / 25000));
     }
 
-    // 3. Create Note record in Supabase
-    const { data: newNote, error: noteError } = await supabase
+    // Step 5: Save metadata inside Supabase (file_key ONLY, NO permanent URLs)
+    const { data: newNote, error: noteError } = await (supabase as unknown as {
+      from: (t: string) => {
+        insert: (data: Record<string, unknown>) => {
+          select: () => { single: () => Promise<{ data: Record<string, unknown>; error: { message: string } | null }> };
+        };
+      };
+    })
       .from("notes")
       .insert({
+        id: noteId,
         user_id: targetUserId,
         folder_id: folderId || null,
         title,
         original_filename: originalFilename,
-        file_key: fileKey, // Permanent key path ONLY — no expiring file_url!
+        file_key: fileKey, // Permanent R2 key path ONLY — no expiring file_url
         file_hash: fileHash,
         mime_type: mimeType,
         file_size: fileSize,
         page_count: estimatedPageCount,
         current_version: 1,
-        ai_status: "extracting_text", // 6-stage AI pipeline start state
+        ai_status: "extracting_text",
         is_favorite: false,
-        summary: `Document "${title}" uploaded. Ready for AI extraction and flashcard processing.`,
+        summary: `Document "${title}" uploaded. Ready for AI processing.`,
       })
       .select()
       .single();
 
     if (noteError) {
-      console.error("[Upload Route] Supabase note insert error:", noteError);
+      console.error("[Upload Route] Supabase error:", noteError);
       return NextResponse.json({ error: noteError.message }, { status: 500 });
     }
 
-    // 4. Create Version 1 record in note_versions table
-    await supabase.from("note_versions").insert({
-      note_id: newNote.id,
-      version_number: 1,
-      file_key: fileKey,
-      file_hash: fileHash,
-      file_size: fileSize,
-      change_summary: "Initial file upload",
-      created_by: targetUserId,
-    });
-
-    // 5. Seed note_contents text chunks table for Ask Owl RAG semantic search
-    await supabase.from("note_contents").insert([
-      {
-        note_id: newNote.id,
-        page_number: 1,
-        chunk_index: 0,
-        content_text: `Overview of ${title}. Main concepts and study summary placeholder for RAG extraction.`,
-        token_count: 32,
-        embedding_status: "pending",
-      },
-    ]);
-
-    // 6. Log to library_activity feed
-    await supabase.from("library_activity").insert({
-      user_id: targetUserId,
-      note_id: newNote.id,
-      action: "uploaded",
-      details: {
-        title,
-        original_filename: originalFilename,
+    // Record version history
+    await (supabase as unknown as { from: (t: string) => { insert: (d: Record<string, unknown>) => Promise<unknown> } })
+      .from("note_versions")
+      .insert({
+        note_id: noteId,
+        version_number: 1,
+        file_key: fileKey,
+        file_hash: fileHash,
         file_size: fileSize,
-      },
-    });
+        change_summary: "Initial upload",
+        created_by: targetUserId,
+      });
+
+    // Record activity
+    await (supabase as unknown as { from: (t: string) => { insert: (d: Record<string, unknown>) => Promise<unknown> } })
+      .from("library_activity")
+      .insert({
+        user_id: targetUserId,
+        note_id: noteId,
+        action: "uploaded",
+        details: { title, original_filename: originalFilename, file_size: fileSize },
+      });
 
     return NextResponse.json({
       success: true,
@@ -154,7 +186,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Upload processing failed";
-    console.error("[Upload Route] Critical Error:", error);
+    console.error("[Upload Route] Error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

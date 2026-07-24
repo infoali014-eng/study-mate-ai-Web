@@ -7,15 +7,32 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const accountId = process.env.R2_ACCOUNT_ID || "";
-const accessKeyId = process.env.R2_ACCESS_KEY_ID || "";
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || "";
-export const BUCKET_NAME = process.env.R2_BUCKET_NAME || "mrowl-study-library";
+function getR2Credentials() {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const bucketName = process.env.R2_BUCKET_NAME || "mrowl-study-library";
+
+  if (!accountId) {
+    throw new Error("[Cloudflare R2] Configuration Error: R2_ACCOUNT_ID environment variable is missing.");
+  }
+  if (!accessKeyId) {
+    throw new Error("[Cloudflare R2] Configuration Error: R2_ACCESS_KEY_ID environment variable is missing.");
+  }
+  if (!secretAccessKey) {
+    throw new Error("[Cloudflare R2] Configuration Error: R2_SECRET_ACCESS_KEY environment variable is missing.");
+  }
+
+  return { accountId, accessKeyId, secretAccessKey, bucketName };
+}
 
 /**
- * Returns a configured AWS S3 Client instance targeting Cloudflare R2 API.
+ * Returns a configured AWS S3 Client instance targeting Cloudflare R2 S3 API.
+ * Credentials remain strictly on the server-side.
  */
 export function getR2Client(): S3Client {
+  const { accountId, accessKeyId, secretAccessKey } = getR2Credentials();
+
   return new S3Client({
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -26,8 +43,12 @@ export function getR2Client(): S3Client {
   });
 }
 
+export function getR2BucketName(): string {
+  return getR2Credentials().bucketName;
+}
+
 /**
- * Uploads a physical file buffer directly to Cloudflare R2 bucket.
+ * Uploads a physical file buffer directly to Cloudflare R2.
  */
 export async function uploadFileToR2(
   fileKey: string,
@@ -35,9 +56,10 @@ export async function uploadFileToR2(
   mimeType: string
 ): Promise<{ success: boolean; fileKey: string }> {
   const client = getR2Client();
+  const bucketName = getR2BucketName();
 
   const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: bucketName,
     Key: fileKey,
     Body: body,
     ContentType: mimeType,
@@ -52,26 +74,27 @@ export async function uploadFileToR2(
 }
 
 /**
- * Deletes a physical file object from Cloudflare R2.
+ * Deletes a physical object from Cloudflare R2.
  */
 export async function deleteFileFromR2(fileKey: string): Promise<boolean> {
   try {
     const client = getR2Client();
+    const bucketName = getR2BucketName();
+
     const command = new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucketName,
       Key: fileKey,
     });
     await client.send(command);
     return true;
   } catch (error) {
-    console.error(`[R2 Storage] Error deleting key "${fileKey}":`, error);
+    console.error(`[Cloudflare R2] Error deleting object "${fileKey}":`, error);
     return false;
   }
 }
 
 /**
- * Dynamically generates a temporary signed URL for securely downloading or previewing R2 assets on-demand.
- * Expiration defaults to 1 hour (3600 seconds).
+ * Generates a short-lived signed URL for safely viewing or downloading R2 assets on demand.
  */
 export async function generateR2SignedUrl(
   fileKey: string,
@@ -79,8 +102,10 @@ export async function generateR2SignedUrl(
 ): Promise<string> {
   try {
     const client = getR2Client();
+    const bucketName = getR2BucketName();
+
     const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucketName,
       Key: fileKey,
     });
 
@@ -89,19 +114,21 @@ export async function generateR2SignedUrl(
     });
     return signedUrl;
   } catch (error) {
-    console.error(`[R2 Storage] Error generating signed URL for "${fileKey}":`, error);
+    console.error(`[Cloudflare R2] Error generating signed URL for "${fileKey}":`, error);
     throw error;
   }
 }
 
 /**
- * Checks if a file exists in R2 bucket metadata by Key.
+ * Checks if an object exists in Cloudflare R2 by fileKey.
  */
 export async function checkFileExistsInR2(fileKey: string): Promise<boolean> {
   try {
     const client = getR2Client();
+    const bucketName = getR2BucketName();
+
     const command = new HeadObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucketName,
       Key: fileKey,
     });
     await client.send(command);

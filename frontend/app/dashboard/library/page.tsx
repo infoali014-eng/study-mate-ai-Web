@@ -29,6 +29,8 @@ export default function StudyLibraryPage() {
     loading,
     uploading,
     uploadProgress,
+    uploadError,
+    uploadSuccess,
     viewMode,
     setViewMode,
     filters,
@@ -72,7 +74,7 @@ export default function StudyLibraryPage() {
             Study Library
           </h1>
           <p className="text-sm text-slate-500 font-medium">
-            Physical assets in Cloudflare R2 • Zero duplicate files • Powers Ask Owl, Quizzes & Flashcards
+            Physical assets in Cloudflare R2 • Zero duplicate files • Powers Ask Mr Owl, Quizzes & Flashcards
           </p>
         </div>
 
@@ -94,6 +96,8 @@ export default function StudyLibraryPage() {
         onUpload={handleFileUpload}
         uploading={uploading}
         progress={uploadProgress}
+        error={uploadError}
+        success={uploadSuccess}
       />
 
       {/* 3. Main Split View Layout (Sidebar + Content Canvas) */}

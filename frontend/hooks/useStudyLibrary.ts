@@ -1,32 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Note,
   Folder,
   FilterOptions,
-  StorageUsageStats,
   FileCategoryFilter,
 } from "@/types/library.types";
 import { LibraryService } from "@/services/libraryService";
 
 export function useStudyLibrary() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [storageStats, setStorageStats] = useState<StorageUsageStats>({
-    usedBytes: 0,
-    totalBytes: 20 * 1024 * 1024 * 1024,
-    noteCount: 0,
-    folderCount: 0,
-    breakdown: { pdf: 0, docs: 0, slides: 0, images: 0, other: 0 },
-  });
+  const queryClient = useQueryClient();
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
 
-  // Filters State
+  // Filter state
   const [filters, setFilters] = useState<FilterOptions>({
     category: "all",
     folderId: null,
@@ -42,120 +35,162 @@ export function useStudyLibrary() {
   const [shareNoteItem, setShareNoteItem] = useState<Note | null>(null);
   const [createFolderModalOpen, setCreateFolderModalOpen] = useState<boolean>(false);
 
-  // Load Notes & Stats
-  const refreshLibrary = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fetchedNotes, fetchedFolders, fetchedStats] = await Promise.all([
-        LibraryService.fetchNotes(filters),
-        LibraryService.fetchFolders(),
-        LibraryService.fetchStorageStats(),
-      ]);
+  // 1. TanStack Query: Fetch Notes
+  const {
+    data: notes = [],
+    isLoading: loadingNotes,
+    refetch: refetchNotes,
+  } = useQuery({
+    queryKey: ["notes", filters],
+    queryFn: () => LibraryService.fetchNotes(filters),
+  });
 
-      setNotes(fetchedNotes);
-      setFolders(fetchedFolders);
-      setStorageStats(fetchedStats);
-    } catch (err) {
-      console.error("[useStudyLibrary] Refresh error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters]);
+  // 2. TanStack Query: Fetch Folders
+  const { data: folders = [], refetch: refetchFolders } = useQuery({
+    queryKey: ["folders"],
+    queryFn: () => LibraryService.fetchFolders(),
+  });
 
-  useEffect(() => {
-    refreshLibrary();
-  }, [refreshLibrary]);
+  // 3. TanStack Query: Fetch Storage Usage Stats
+  const { data: storageStats = {
+    usedBytes: 0,
+    totalBytes: 20 * 1024 * 1024 * 1024,
+    noteCount: 0,
+    folderCount: 0,
+    breakdown: { pdf: 0, docs: 0, slides: 0, images: 0, other: 0 },
+  } } = useQuery({
+    queryKey: ["storageStats"],
+    queryFn: () => LibraryService.fetchStorageStats(),
+  });
 
-  // File Upload Handler
-  const handleFileUpload = async (files: FileList | File[]) => {
-    if (!files || files.length === 0) return;
-    setUploading(true);
-    setUploadProgress(15);
+  // Reusable Query Invalidation Helper
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["notes"] });
+    queryClient.invalidateQueries({ queryKey: ["folders"] });
+    queryClient.invalidateQueries({ queryKey: ["storageStats"] });
+  };
 
-    try {
-      const fileList = Array.from(files);
-      for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i];
+  // 4. File Upload Mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      setUploading(true);
+      setUploadError(null);
+      setUploadSuccess(false);
+      setUploadProgress(20);
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const formData = new FormData();
         formData.append("file", file);
         if (filters.folderId) {
           formData.append("folderId", filters.folderId);
         }
 
-        setUploadProgress(35 + Math.round(((i + 0.5) / fileList.length) * 45));
+        setUploadProgress(40 + Math.round(((i + 0.5) / files.length) * 45));
 
         const res = await fetch("/api/storage/upload", {
           method: "POST",
           body: formData,
         });
 
+        const data = await res.json();
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Upload failed");
+          throw new Error(data.error || "Upload failed");
         }
       }
-
       setUploadProgress(100);
-      await refreshLibrary();
-    } catch (err: unknown) {
-      console.error("[useStudyLibrary] Upload error:", err);
-      alert(err instanceof Error ? err.message : "Upload failed");
-    } finally {
+      return true;
+    },
+    onSuccess: () => {
+      setUploadSuccess(true);
+      invalidateAll();
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
-      }, 400);
+        setUploadSuccess(false);
+      }, 1200);
+    },
+    onError: (err: Error) => {
+      setUploadError(err.message || "Upload failed");
+      setUploading(false);
+      setUploadProgress(0);
+    },
+  });
+
+  // 5. Toggle Favorite Mutation
+  const favoriteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      const target = notes.find((n) => n.id === noteId);
+      if (!target) return;
+      await LibraryService.toggleFavorite(noteId, target.is_favorite);
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  // 6. Rename Note Mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ noteId, newTitle }: { noteId: string; newTitle: string }) => {
+      await LibraryService.renameNote(noteId, newTitle);
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  // 7. Move Note Mutation
+  const moveMutation = useMutation({
+    mutationFn: async ({ noteId, targetFolderId }: { noteId: string; targetFolderId: string | null }) => {
+      await LibraryService.moveNote(noteId, targetFolderId);
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  // 8. Delete Note Mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      await LibraryService.deleteNote(noteId);
+    },
+    onSuccess: () => {
+      invalidateAll();
+    },
+  });
+
+  // Handlers
+  const handleFileUpload = (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length > 0) {
+      uploadMutation.mutate(list);
     }
   };
 
-  // Toggle Favorite
-  const toggleFavorite = async (noteId: string) => {
-    const targetNote = notes.find((n) => n.id === noteId);
-    if (!targetNote) return;
-
-    // Optimistic UI update
-    setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, is_favorite: !n.is_favorite } : n))
-    );
-
-    await LibraryService.toggleFavorite(noteId, targetNote.is_favorite);
+  const toggleFavorite = (noteId: string) => {
+    favoriteMutation.mutate(noteId);
   };
 
-  // Rename Note
-  const renameNote = async (noteId: string, newTitle: string) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, title: newTitle } : n))
-    );
-    await LibraryService.renameNote(noteId, newTitle);
+  const renameNote = (noteId: string, newTitle: string) => {
+    renameMutation.mutate({ noteId, newTitle });
   };
 
-  // Move Note
-  const moveNote = async (noteId: string, targetFolderId: string | null) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === noteId ? { ...n, folder_id: targetFolderId } : n))
-    );
-    await LibraryService.moveNote(noteId, targetFolderId);
-    await refreshLibrary();
+  const moveNote = (noteId: string, targetFolderId: string | null) => {
+    moveMutation.mutate({ noteId, targetFolderId });
   };
 
-  // Delete Note
-  const deleteNote = async (noteId: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== noteId));
-    await LibraryService.deleteNote(noteId);
-    await refreshLibrary();
+  const deleteNote = (noteId: string) => {
+    deleteMutation.mutate(noteId);
   };
 
-  // Change Category Filter
   const setCategoryFilter = (cat: FileCategoryFilter) => {
     setFilters((prev) => ({ ...prev, category: cat, folderId: null }));
   };
 
-  // Select Folder
   const setSelectFolder = (folderId: string | null) => {
     setFilters((prev) => ({ ...prev, folderId, category: "all" }));
   };
 
-  // Update Search Query
   const setSearchQuery = (query: string) => {
     setFilters((prev) => ({ ...prev, searchQuery: query }));
   };
@@ -164,9 +199,11 @@ export function useStudyLibrary() {
     notes,
     folders,
     storageStats,
-    loading,
+    loading: loadingNotes,
     uploading,
     uploadProgress,
+    uploadError,
+    uploadSuccess,
     viewMode,
     setViewMode,
     filters,
@@ -179,7 +216,10 @@ export function useStudyLibrary() {
     renameNote,
     moveNote,
     deleteNote,
-    refreshLibrary,
+    refreshLibrary: () => {
+      refetchNotes();
+      refetchFolders();
+    },
     // Modals
     previewNote,
     setPreviewNote,
