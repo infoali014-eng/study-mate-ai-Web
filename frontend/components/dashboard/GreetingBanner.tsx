@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { PageHeader, Button, Badge } from "@/components/ui";
+import { LibraryService } from "@/services/libraryService";
 
 export default function GreetingBanner() {
   const [firstName, setFirstName] = useState<string | null>(null);
@@ -22,7 +24,9 @@ export default function GreetingBanner() {
 
     const fetchUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           const fullName =
             user.user_metadata?.display_name ||
@@ -42,6 +46,18 @@ export default function GreetingBanner() {
     fetchUser();
   }, []);
 
+  // TanStack Query for live reactive stats
+  const { data: stats } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: () => LibraryService.getDashboardStats(),
+  });
+
+  const totalNotes = stats?.totalNotes || 0;
+  const descriptionText =
+    totalNotes > 0
+      ? `You have ${totalNotes} ${totalNotes === 1 ? "study note" : "study notes"} ready in your AI workspace.`
+      : "Upload your first note to start learning and build your personal AI study workspace.";
+
   return (
     <PageHeader
       badge={
@@ -50,9 +66,9 @@ export default function GreetingBanner() {
         </Badge>
       }
       title={`${greetingTime}${firstName ? `, ${firstName}` : ""} 👋`}
-      description="Ready to continue learning? Your workspace is clean and ready."
+      description={descriptionText}
       action={
-        <Link href="/library?action=upload">
+        <Link href="/dashboard/library">
           <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}>
             Upload Notes
           </Button>

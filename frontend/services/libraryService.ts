@@ -401,4 +401,57 @@ export class LibraryService {
       breakdown,
     };
   }
+
+  /**
+   * Fetches real live dashboard statistics (Total Notes, Total Storage Bytes, Favorite Count, Recent Count).
+   */
+  static async getDashboardStats(): Promise<{
+    totalNotes: number;
+    totalStorageBytes: number;
+    favoriteCount: number;
+    recentCount: number;
+  }> {
+    const supabase = getSupabaseClient();
+    const { data: notes } = await (supabase as any)
+      .from("notes")
+      .select("file_size, is_favorite, created_at");
+
+    let totalStorageBytes = 0;
+    let favoriteCount = 0;
+    let recentCount = 0;
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    (notes || []).forEach((n: { file_size?: number; is_favorite?: boolean; created_at?: string }) => {
+      totalStorageBytes += Number(n.file_size || 0);
+      if (n.is_favorite) favoriteCount++;
+      if (n.created_at && new Date(n.created_at) >= sevenDaysAgo) recentCount++;
+    });
+
+    return {
+      totalNotes: notes?.length || 0,
+      totalStorageBytes,
+      favoriteCount,
+      recentCount,
+    };
+  }
+
+  /**
+   * Fetches recent notes for Dashboard Continue Learning section.
+   */
+  static async getRecentNotes(limit: number = 6): Promise<Note[]> {
+    const supabase = getSupabaseClient();
+    const { data, error } = await (supabase as any)
+      .from("notes")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("[LibraryService] Error fetching recent notes:", error);
+      return [];
+    }
+    return data || [];
+  }
 }

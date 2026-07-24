@@ -16,7 +16,6 @@ import {
   Share2,
   Trash2,
   Sparkles,
-  CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
 import { Note } from "@/types/library.types";
@@ -67,7 +66,21 @@ export default function NoteCard({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const getAIBadge = (status: string) => {
+  const formatDate = (dateStr: string): string => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // AI Status Badge rules: ONLY show when actively running an AI job!
+  const renderAIBadge = (status: string) => {
     switch (status) {
       case "processing":
       case "extracting_text":
@@ -84,14 +97,9 @@ export default function NoteCard({
             <AlertTriangle className="w-3 h-3" /> Failed
           </span>
         );
-      case "completed":
-      case "ready":
+      // "completed", "ready", "uploaded" -> DO NOT render any badge!
       default:
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3" /> Ready
-          </span>
-        );
+        return null;
     }
   };
 
@@ -114,7 +122,6 @@ export default function NoteCard({
     }
   };
 
-  // Smart "Open With" Menu Items
   const menuItems = [
     {
       id: "preview",
@@ -193,103 +200,101 @@ export default function NoteCard({
     },
   ];
 
+  const aiBadge = renderAIBadge(note.ai_status);
+
   return (
-    <div className="group bg-white rounded-[16px] border border-slate-200/90 hover:border-[#219EBC]/60 p-4 shadow-xs hover:shadow-md transition-all duration-180 flex flex-col justify-between select-none">
-      {/* Top Content Row */}
+    <div className="group bg-white rounded-[16px] border border-slate-200/90 hover:border-[#219EBC]/60 p-4 shadow-xs hover:shadow-lg transition-all duration-200 hover:-translate-y-1 flex flex-col justify-between select-none">
+      {/* 1. Header Preview Container */}
       <div>
-        {/* Task 1: Image Thumbnail Header if file is image */}
         {isImg && imageUrl && !imageError ? (
           <div
             onClick={() => onPreview(note)}
-            className="relative w-full h-32 mb-3 rounded-[12px] overflow-hidden bg-slate-100 border border-slate-200/60 flex items-center justify-center cursor-pointer"
+            className="relative w-full h-36 mb-3 rounded-[12px] overflow-hidden bg-slate-100 border border-slate-200/60 flex items-center justify-center cursor-pointer"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt={note.title}
               onError={() => setImageError(true)}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-200"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
             />
           </div>
-        ) : null}
-
-        <div className="flex items-start justify-between gap-3 mb-2.5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {(!isImg || !imageUrl || imageError) && (
-              <div className="w-10 h-10 rounded-[12px] bg-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                {getFileIcon(note.mime_type, note.original_filename)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3
-                  onClick={() => onPreview(note)}
-                  className="text-sm font-extrabold text-slate-900 group-hover:text-[#219EBC] transition-colors truncate cursor-pointer"
-                  title={note.title}
-                >
-                  {note.title}
-                </h3>
-                {note.current_version > 1 && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-mono shrink-0">
-                    v{note.current_version}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 truncate">{note.original_filename}</p>
+        ) : (
+          <div
+            onClick={() => onPreview(note)}
+            className="relative w-full h-24 mb-3 rounded-[12px] bg-slate-50 border border-slate-200/60 flex items-center justify-center cursor-pointer transition-colors group-hover:bg-slate-100/80"
+          >
+            <div className="transition-transform duration-200 group-hover:scale-110">
+              {getFileIcon(note.mime_type, note.original_filename, "w-8 h-8")}
             </div>
           </div>
+        )}
 
-          {/* Favorite & Context Menu Controls */}
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => onFavoriteToggle(note.id)}
-              className={`p-1.5 rounded-[8px] transition-colors cursor-pointer ${
-                note.is_favorite
-                  ? "text-[#FFB703] fill-[#FFB703]"
-                  : "text-slate-300 hover:text-[#FFB703]"
-              }`}
-              title={note.is_favorite ? "Remove favorite" : "Favorite note"}
+        {/* 2. Title & Date */}
+        <div className="space-y-1 mb-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3
+              onClick={() => onPreview(note)}
+              className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-[#219EBC] transition-colors line-clamp-2 cursor-pointer leading-snug"
+              title={note.title}
             >
-              <Star className="w-4 h-4" />
-            </button>
+              {note.title}
+            </h3>
+            {note.current_version > 1 && (
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 font-mono shrink-0">
+                v{note.current_version}
+              </span>
+            )}
+          </div>
 
-            {/* Smart Context Dropdown Menu */}
-            <DropdownMenuWrapper
-              trigger={
-                <button
-                  type="button"
-                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-[8px] transition-colors cursor-pointer"
-                  aria-label="More note actions"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              }
-              items={menuItems}
-            />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400 font-medium">
+              {formatDate(note.created_at)}
+            </span>
+            {aiBadge}
           </div>
         </div>
-
-        {/* Note Summary / Snippet */}
-        {note.summary && (
-          <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
-            {note.summary}
-          </p>
-        )}
       </div>
 
-      {/* Footer Info Row */}
-      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400">
-        <div className="flex items-center gap-2">
+      {/* 3. Bottom Row: Size • Page Count • Favorite • Context Menu */}
+      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400">
+        <div className="flex items-center gap-1.5">
           <span>{formatFileSize(note.file_size)}</span>
           {note.page_count > 0 && (
             <>
               <span>•</span>
-              <span>{note.page_count} pgs</span>
+              <span>{note.page_count} {note.page_count === 1 ? "Page" : "Pages"}</span>
             </>
           )}
         </div>
-        <div>{getAIBadge(note.ai_status)}</div>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onFavoriteToggle(note.id)}
+            className={`p-1.5 rounded-[8px] transition-all duration-200 cursor-pointer ${
+              note.is_favorite
+                ? "text-[#FFB703] fill-[#FFB703] scale-110"
+                : "text-slate-300 hover:text-[#FFB703]"
+            }`}
+            title={note.is_favorite ? "Remove favorite" : "Favorite note"}
+          >
+            <Star className="w-4 h-4" />
+          </button>
+
+          <DropdownMenuWrapper
+            trigger={
+              <button
+                type="button"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-[8px] transition-colors cursor-pointer opacity-80 group-hover:opacity-100"
+                aria-label="More note actions"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            }
+            items={menuItems}
+          />
+        </div>
       </div>
     </div>
   );

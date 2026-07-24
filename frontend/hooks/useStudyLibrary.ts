@@ -69,6 +69,10 @@ export function useStudyLibrary() {
     queryClient.invalidateQueries({ queryKey: ["notes"] });
     queryClient.invalidateQueries({ queryKey: ["folders"] });
     queryClient.invalidateQueries({ queryKey: ["storageStats"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+    queryClient.invalidateQueries({ queryKey: ["recentNotes"] });
+    queryClient.invalidateQueries({ queryKey: ["userStreak"] });
+    queryClient.invalidateQueries({ queryKey: ["weeklyHistory"] });
   };
 
   // 4. File Upload Mutation

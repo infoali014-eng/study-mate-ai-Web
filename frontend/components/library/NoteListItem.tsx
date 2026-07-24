@@ -15,7 +15,6 @@ import {
   Calendar,
   Share2,
   Trash2,
-  CheckCircle2,
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
@@ -54,7 +53,20 @@ export default function NoteListItem({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
-  const getAIBadge = (status: string) => {
+  const formatDate = (dateStr: string): string => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const renderAIBadge = (status: string) => {
     switch (status) {
       case "processing":
       case "extracting_text":
@@ -71,14 +83,8 @@ export default function NoteListItem({
             <AlertTriangle className="w-3 h-3" /> Failed
           </span>
         );
-      case "completed":
-      case "ready":
       default:
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
-            <CheckCircle2 className="w-3 h-3" /> Ready
-          </span>
-        );
+        return null;
     }
   };
 
@@ -145,15 +151,17 @@ export default function NoteListItem({
     { id: "delete", label: "Delete Note", icon: <Trash2 className="w-4 h-4" />, destructive: true, onClick: () => onDelete(note.id) },
   ];
 
+  const aiBadge = renderAIBadge(note.ai_status);
+
   return (
-    <div className="group bg-white rounded-[12px] border border-slate-200/80 hover:border-[#219EBC]/60 px-4 py-2.5 shadow-xs flex items-center justify-between gap-4 transition-all duration-120 select-none">
+    <div className="group bg-white rounded-[12px] border border-slate-200/80 hover:border-[#219EBC]/60 px-4 py-2.5 shadow-xs flex items-center justify-between gap-4 transition-all duration-150 hover:bg-slate-50/50 select-none">
       {/* File Title & Icon */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <button
           type="button"
           onClick={() => onFavoriteToggle(note.id)}
-          className={`p-1 rounded-[6px] transition-colors cursor-pointer shrink-0 ${
-            note.is_favorite ? "text-[#FFB703]" : "text-slate-300 hover:text-[#FFB703]"
+          className={`p-1 rounded-[6px] transition-all duration-200 cursor-pointer shrink-0 ${
+            note.is_favorite ? "text-[#FFB703] fill-[#FFB703] scale-110" : "text-slate-300 hover:text-[#FFB703]"
           }`}
         >
           <Star className="w-4 h-4" />
@@ -177,15 +185,14 @@ export default function NoteListItem({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 truncate">{note.original_filename}</p>
+          <p className="text-[11px] text-slate-400 font-medium truncate">{formatDate(note.created_at)}</p>
         </div>
       </div>
 
-      {/* Meta details (Size, Date, AI Status) */}
+      {/* Meta details (Size, AI Status) */}
       <div className="hidden sm:flex items-center gap-4 text-xs text-slate-500 font-medium shrink-0">
         <span>{formatFileSize(note.file_size)}</span>
-        <span>{new Date(note.created_at).toLocaleDateString()}</span>
-        <div>{getAIBadge(note.ai_status)}</div>
+        {aiBadge}
       </div>
 
       {/* Context Menu */}
@@ -194,7 +201,7 @@ export default function NoteListItem({
           trigger={
             <button
               type="button"
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-[8px] transition-colors cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-[8px] transition-colors cursor-pointer opacity-80 group-hover:opacity-100"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
