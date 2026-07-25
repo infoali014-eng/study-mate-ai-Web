@@ -5,6 +5,7 @@ import { useLayoutStore } from "@/store/layoutStore";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MainContent from "./MainContent";
+import FloatingOwl from "@/components/owl/FloatingOwl";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -50,6 +51,9 @@ export default function DashboardLayout({
         {/* Main Content Area */}
         <MainContent>{children}</MainContent>
       </div>
+
+      {/* Mr Owl — floating suggestion widget */}
+      <FloatingOwl />
     </div>
   );
 }
