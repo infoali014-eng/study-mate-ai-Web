@@ -15,12 +15,15 @@ export class ActivityTracker {
   private lastActivityTime: number = Date.now();
   private activeSeconds: number = 0;
   private isListening: boolean = false;
+  private hasTriggeredToday: boolean = false;
   private onCompleteCallback: (() => void) | null = null;
 
   private constructor() {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(getTodayKey());
       this.activeSeconds = stored ? parseInt(stored, 10) || 0 : 0;
+      const triggered = localStorage.getItem(`${getTodayKey()}_triggered`);
+      this.hasTriggeredToday = triggered === "true";
     }
   }
 
@@ -32,8 +35,19 @@ export class ActivityTracker {
   }
 
   public startTracking(onComplete: () => void) {
-    if (typeof window === "undefined" || this.isListening) return;
+    if (typeof window === "undefined") return;
     this.onCompleteCallback = onComplete;
+
+    // Check if user already reached 10 minutes today
+    if (this.activeSeconds >= ACTIVE_SESSION_REQUIRED_SECONDS && !this.hasTriggeredToday) {
+      this.hasTriggeredToday = true;
+      localStorage.setItem(`${getTodayKey()}_triggered`, "true");
+      if (this.onCompleteCallback) {
+        this.onCompleteCallback();
+      }
+    }
+
+    if (this.isListening) return;
     this.isListening = true;
 
     // Attach user activity listeners
@@ -41,10 +55,10 @@ export class ActivityTracker {
       this.lastActivityTime = Date.now();
     };
 
-    window.addEventListener("mousemove", handleUserActivity);
-    window.addEventListener("keydown", handleUserActivity);
-    window.addEventListener("scroll", handleUserActivity);
-    window.addEventListener("click", handleUserActivity);
+    window.addEventListener("mousemove", handleUserActivity, { passive: true });
+    window.addEventListener("keydown", handleUserActivity, { passive: true });
+    window.addEventListener("scroll", handleUserActivity, { passive: true });
+    window.addEventListener("click", handleUserActivity, { passive: true });
 
     // 1-second pulse timer
     this.timer = setInterval(() => {
@@ -63,7 +77,9 @@ export class ActivityTracker {
       this.activeSeconds += 1;
       localStorage.setItem(getTodayKey(), String(this.activeSeconds));
 
-      if (this.activeSeconds >= ACTIVE_SESSION_REQUIRED_SECONDS) {
+      if (this.activeSeconds >= ACTIVE_SESSION_REQUIRED_SECONDS && !this.hasTriggeredToday) {
+        this.hasTriggeredToday = true;
+        localStorage.setItem(`${getTodayKey()}_triggered`, "true");
         if (this.onCompleteCallback) {
           this.onCompleteCallback();
         }

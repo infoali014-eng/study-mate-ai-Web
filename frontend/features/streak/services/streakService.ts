@@ -2,6 +2,8 @@ import { createBrowserClient } from "@supabase/ssr";
 import { UserStreak, DailyActivity, DayActivityStatus, StreakActivityType } from "../types/streak.types";
 import { STREAK_POINTS, MAX_DAILY_POINTS } from "../constants/streak.constants";
 
+const LOCAL_STREAK_KEY = "mrowl_guest_user_streak";
+
 function getSupabaseClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -14,20 +16,89 @@ function getTodayString(): string {
   return today.toISOString().split("T")[0];
 }
 
+function getLocalStreak(todayStr: string): UserStreak {
+  if (typeof window === "undefined") {
+    return {
+      id: "local",
+      user_id: "guest",
+      current_streak: 0,
+      best_streak: 0,
+      today_points: 0,
+      today_completed: false,
+      last_completed_date: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  const raw = localStorage.getItem(LOCAL_STREAK_KEY);
+  if (raw) {
+    try {
+      const parsed: UserStreak = JSON.parse(raw);
+      if (parsed.last_completed_date !== todayStr) {
+        if (parsed.last_completed_date) {
+          const last = new Date(parsed.last_completed_date);
+          const current = new Date(todayStr);
+          const diffDays = Math.round((current.getTime() - last.getTime()) / (1000 * 3600 * 24));
+          if (diffDays > 1) {
+            parsed.current_streak = 0;
+          }
+        }
+        parsed.today_points = 0;
+        parsed.today_completed = false;
+        localStorage.setItem(LOCAL_STREAK_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
+    } catch {
+      // Fallback
+    }
+  }
+
+  const initial: UserStreak = {
+    id: "local",
+    user_id: "guest",
+    current_streak: 0,
+    best_streak: 0,
+    today_points: 0,
+    today_completed: false,
+    last_completed_date: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  localStorage.setItem(LOCAL_STREAK_KEY, JSON.stringify(initial));
+  return initial;
+}
+
+function saveLocalStreak(streak: UserStreak) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LOCAL_STREAK_KEY, JSON.stringify(streak));
+  }
+}
+
 export class StreakService {
   /**
    * Fetches or initializes user's streak record.
-   * Handles daily reset if user missed completing yesterday.
+   * Handles daily reset if starting a new calendar day.
    */
   static async getUserStreak(): Promise<UserStreak> {
-    const supabase = getSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const targetUserId = user?.id || "00000000-0000-0000-0000-000000000000";
     const todayStr = getTodayString();
+    const supabase = getSupabaseClient();
 
+    let targetUserId = "guest";
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) targetUserId = user.id;
+    } catch {
+      targetUserId = "guest";
+    }
+
+    if (targetUserId === "guest") {
+      return getLocalStreak(todayStr);
+    }
+
+    // Authenticated user query
     const { data: existingStreak } = await (supabase as any)
       .from("user_streaks")
       .select("*")
@@ -50,45 +121,48 @@ export class StreakService {
 
       if (error) {
         console.error("[StreakService] Error creating user streak:", error);
-        return {
-          id: "temp",
-          user_id: targetUserId,
-          current_streak: 0,
-          best_streak: 0,
-          today_points: 0,
-          today_completed: false,
-          last_completed_date: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+        return getLocalStreak(todayStr);
       }
       return newStreak;
     }
 
-    // Check if daily reset is required
     let streak = existingStreak as UserStreak;
-    const lastDateStr = streak.last_completed_date;
 
-    if (lastDateStr) {
-      const lastDate = new Date(lastDateStr);
-      const today = new Date(todayStr);
-      const diffDays = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+    // Daily reset check: If today is a new calendar day compared to last_completed_date
+    if (streak.last_completed_date !== todayStr) {
+      let streakBroken = false;
+      if (streak.last_completed_date) {
+        const lastDate = new Date(streak.last_completed_date);
+        const today = new Date(todayStr);
+        const diffDays = Math.round((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+        if (diffDays > 1) {
+          streakBroken = true;
+        }
+      }
 
-      // If last completed date was before yesterday, streak broke! Reset current_streak = 0
-      if (diffDays > 1 && streak.current_streak > 0) {
-        console.log("[StreakService] Streak broken! Resetting current_streak to 0.");
-        const { data: resetStreak } = await (supabase as any)
-          .from("user_streaks")
-          .update({
-            current_streak: 0,
-            today_points: 0,
-            today_completed: false,
-          })
-          .eq("user_id", targetUserId)
-          .select()
-          .single();
+      const newCurrentStreak = streakBroken ? 0 : streak.current_streak;
 
-        if (resetStreak) streak = resetStreak;
+      // Reset today_completed to false and today_points to 0 for the new day
+      const { data: resetStreak } = await (supabase as any)
+        .from("user_streaks")
+        .update({
+          current_streak: newCurrentStreak,
+          today_points: 0,
+          today_completed: false,
+        })
+        .eq("user_id", targetUserId)
+        .select()
+        .single();
+
+      if (resetStreak) {
+        streak = resetStreak;
+      } else {
+        streak = {
+          ...streak,
+          current_streak: newCurrentStreak,
+          today_points: 0,
+          today_completed: false,
+        };
       }
     }
 
@@ -100,12 +174,19 @@ export class StreakService {
    */
   static async getWeeklyHistory(): Promise<DayActivityStatus[]> {
     const supabase = getSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const targetUserId = user?.id || "00000000-0000-0000-0000-000000000000";
     const today = new Date();
+    const todayStr = getTodayString();
+
+    let targetUserId = "guest";
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) targetUserId = user.id;
+    } catch {
+      targetUserId = "guest";
+    }
+
     const currentDayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon...
     const distanceToMonday = (currentDayOfWeek + 6) % 7;
 
@@ -119,16 +200,29 @@ export class StreakService {
       weekDates.push(d.toISOString().split("T")[0]);
     }
 
-    const { data: records } = await (supabase as any)
-      .from("daily_activity")
-      .select("*")
-      .eq("user_id", targetUserId)
-      .in("activity_date", weekDates);
+    let recordsMap = new Map<string, DailyActivity>();
 
-    const recordsMap = new Map<string, DailyActivity>();
-    (records || []).forEach((rec: DailyActivity) => {
-      recordsMap.set(rec.activity_date, rec);
-    });
+    if (targetUserId !== "guest") {
+      const { data: records } = await (supabase as any)
+        .from("daily_activity")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .in("activity_date", weekDates);
+
+      (records || []).forEach((rec: DailyActivity) => {
+        recordsMap.set(rec.activity_date, rec);
+      });
+    } else if (typeof window !== "undefined") {
+      const localDailyRaw = localStorage.getItem(`mrowl_daily_${todayStr}`);
+      if (localDailyRaw) {
+        try {
+          const rec: DailyActivity = JSON.parse(localDailyRaw);
+          recordsMap.set(rec.activity_date, rec);
+        } catch {
+          // Fallback
+        }
+      }
+    }
 
     const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
     const fullDayNames = [
@@ -141,13 +235,10 @@ export class StreakService {
       "Sunday",
     ];
 
-    const todayStr = getTodayString();
-
     return weekDates.map((dateStr, idx) => {
       const rec = recordsMap.get(dateStr);
       const isToday = dateStr === todayStr;
       const isFuture = dateStr > todayStr;
-      // Streak completes on ANY activity (points > 0)
       const isCompleted = rec ? rec.completed || rec.total_points > 0 : false;
       const isMissed = !isFuture && !isToday && !isCompleted;
 
@@ -176,27 +267,57 @@ export class StreakService {
     type: StreakActivityType
   ): Promise<{ newlyCompleted: boolean; currentStreak: number; totalPoints: number }> {
     const supabase = getSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const targetUserId = user?.id || "00000000-0000-0000-0000-000000000000";
     const todayStr = getTodayString();
 
-    // 1. Get or create today's daily_activity row
-    const { data: existingDaily } = await (supabase as any)
-      .from("daily_activity")
-      .select("*")
-      .eq("user_id", targetUserId)
-      .eq("activity_date", todayStr)
-      .maybeSingle();
+    let targetUserId = "guest";
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) targetUserId = user.id;
+    } catch {
+      targetUserId = "guest";
+    }
 
     let daily: DailyActivity;
-    if (!existingDaily) {
-      const { data: newDaily } = await (supabase as any)
+
+    if (targetUserId !== "guest") {
+      const { data: existingDaily } = await (supabase as any)
         .from("daily_activity")
-        .insert({
-          user_id: targetUserId,
+        .select("*")
+        .eq("user_id", targetUserId)
+        .eq("activity_date", todayStr)
+        .maybeSingle();
+
+      if (!existingDaily) {
+        const { data: newDaily } = await (supabase as any)
+          .from("daily_activity")
+          .insert({
+            user_id: targetUserId,
+            activity_date: todayStr,
+            chat_points: 0,
+            session_points: 0,
+            upload_points: 0,
+            preview_points: 0,
+            total_points: 0,
+            completed: false,
+          })
+          .select()
+          .single();
+        daily = newDaily;
+      } else {
+        daily = existingDaily;
+      }
+    } else {
+      // Guest local storage daily activity
+      const localKey = `mrowl_daily_${todayStr}`;
+      const raw = typeof window !== "undefined" ? localStorage.getItem(localKey) : null;
+      if (raw) {
+        daily = JSON.parse(raw);
+      } else {
+        daily = {
+          id: "local_daily",
+          user_id: "guest",
           activity_date: todayStr,
           chat_points: 0,
           session_points: 0,
@@ -204,15 +325,12 @@ export class StreakService {
           preview_points: 0,
           total_points: 0,
           completed: false,
-        })
-        .select()
-        .single();
-      daily = newDaily;
-    } else {
-      daily = existingDaily;
+          created_at: new Date().toISOString(),
+        };
+      }
     }
 
-    // 2. Determine point increase based on activity type
+    // Determine point increase based on activity type
     let chatPts = daily.chat_points;
     let sessionPts = daily.session_points;
     let uploadPts = daily.upload_points;
@@ -234,7 +352,7 @@ export class StreakService {
     }
 
     if (pointsAwarded === 0) {
-      // Activity type points already completed today
+      // Activity type points already awarded today
       const currentStreakRecord = await StreakService.getUserStreak();
       return {
         newlyCompleted: false,
@@ -247,23 +365,32 @@ export class StreakService {
       MAX_DAILY_POINTS,
       chatPts + sessionPts + uploadPts + previewPts
     );
-    // Any activity (total points > 0) qualifies today as completed for streak!
     const isNowCompleted = newTotalPoints > 0;
 
-    // 3. Update daily_activity row
-    await (supabase as any)
-      .from("daily_activity")
-      .update({
-        chat_points: chatPts,
-        session_points: sessionPts,
-        upload_points: uploadPts,
-        preview_points: previewPts,
-        total_points: newTotalPoints,
-        completed: isNowCompleted,
-      })
-      .eq("id", daily.id);
+    daily.chat_points = chatPts;
+    daily.session_points = sessionPts;
+    daily.upload_points = uploadPts;
+    daily.preview_points = previewPts;
+    daily.total_points = newTotalPoints;
+    daily.completed = isNowCompleted;
 
-    // 4. Update user_streaks
+    if (targetUserId !== "guest") {
+      await (supabase as any)
+        .from("daily_activity")
+        .update({
+          chat_points: chatPts,
+          session_points: sessionPts,
+          upload_points: uploadPts,
+          preview_points: previewPts,
+          total_points: newTotalPoints,
+          completed: isNowCompleted,
+        })
+        .eq("id", daily.id);
+    } else if (typeof window !== "undefined") {
+      localStorage.setItem(`mrowl_daily_${todayStr}`, JSON.stringify(daily));
+    }
+
+    // Update user_streaks
     const currentStreakRecord = await StreakService.getUserStreak();
     let newlyCompleted = false;
     let updatedStreakCount = currentStreakRecord.current_streak;
@@ -273,23 +400,41 @@ export class StreakService {
       updatedStreakCount = currentStreakRecord.current_streak + 1;
       const updatedBestStreak = Math.max(currentStreakRecord.best_streak, updatedStreakCount);
 
-      await (supabase as any)
-        .from("user_streaks")
-        .update({
+      if (targetUserId !== "guest") {
+        await (supabase as any)
+          .from("user_streaks")
+          .update({
+            current_streak: updatedStreakCount,
+            best_streak: updatedBestStreak,
+            today_points: newTotalPoints,
+            today_completed: true,
+            last_completed_date: todayStr,
+          })
+          .eq("user_id", targetUserId);
+      } else {
+        saveLocalStreak({
+          ...currentStreakRecord,
           current_streak: updatedStreakCount,
           best_streak: updatedBestStreak,
           today_points: newTotalPoints,
           today_completed: true,
           last_completed_date: todayStr,
-        })
-        .eq("user_id", targetUserId);
+        });
+      }
     } else {
-      await (supabase as any)
-        .from("user_streaks")
-        .update({
+      if (targetUserId !== "guest") {
+        await (supabase as any)
+          .from("user_streaks")
+          .update({
+            today_points: newTotalPoints,
+          })
+          .eq("user_id", targetUserId);
+      } else {
+        saveLocalStreak({
+          ...currentStreakRecord,
           today_points: newTotalPoints,
-        })
-        .eq("user_id", targetUserId);
+        });
+      }
     }
 
     return {

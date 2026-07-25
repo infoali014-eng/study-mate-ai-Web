@@ -30,7 +30,7 @@ export function useStreak() {
   } = useQuery({
     queryKey: ["userStreak"],
     queryFn: () => StreakService.getUserStreak(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   });
 
   // 2. Fetch Weekly History (M T W T F S S)
@@ -41,7 +41,7 @@ export function useStreak() {
   } = useQuery({
     queryKey: ["weeklyHistory"],
     queryFn: () => StreakService.getWeeklyHistory(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   });
 
   // 3. Activity Recording Mutation
