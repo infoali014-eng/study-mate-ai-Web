@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import { Camera, Trash2, Loader2, CheckCircle2 } from "lucide-react";
 import { ProfileSettings } from "@/types/settings.types";
 import { SettingsService } from "@/services/settingsService";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ProfileCard() {
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ProfileSettings>({
     displayName: "",
     username: "",
@@ -38,6 +40,7 @@ export default function ProfileCard() {
     setSaving(false);
 
     if (res.success) {
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       setToast({ type: "success", text: res.message });
       setTimeout(() => setToast(null), 3000);
     } else {

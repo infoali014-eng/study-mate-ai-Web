@@ -4,13 +4,13 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Sparkles } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/client";
 import { PageHeader, Button, Badge } from "@/components/ui";
 import { LibraryService } from "@/services/libraryService";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function GreetingBanner() {
-  const [firstName, setFirstName] = useState<string | null>(null);
   const [greetingTime, setGreetingTime] = useState<string>("Good Morning");
+  const { profile } = useUserProfile();
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -21,29 +21,6 @@ export default function GreetingBanner() {
     } else {
       setGreetingTime("Good Evening");
     }
-
-    const fetchUser = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const fullName =
-            user.user_metadata?.display_name ||
-            user.user_metadata?.full_name ||
-            user.email?.split("@")[0] ||
-            "";
-          const first = fullName.trim().split(" ")[0];
-          if (first) {
-            setFirstName(first);
-          }
-        }
-      } catch {
-        // Fallback silently if user call encounters error
-      }
-    };
-
-    fetchUser();
   }, []);
 
   // TanStack Query for live reactive stats
@@ -51,6 +28,8 @@ export default function GreetingBanner() {
     queryKey: ["dashboardStats"],
     queryFn: () => LibraryService.getDashboardStats(),
   });
+
+  const firstName = profile.displayName ? profile.displayName.trim().split(" ")[0] : null;
 
   const totalNotes = stats?.totalNotes || 0;
   const descriptionText =

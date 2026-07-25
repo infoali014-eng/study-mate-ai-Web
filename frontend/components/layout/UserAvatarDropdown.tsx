@@ -3,14 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { CircleUserRound, Settings2, LogOut, User } from "lucide-react";
+import { CircleUserRound, Settings2, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function UserAvatarDropdown() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const { profile, academic, getInitials } = useUserProfile();
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -40,6 +42,9 @@ export default function UserAvatarDropdown() {
     router.push("/login");
   };
 
+  const subtitle =
+    academic.fieldOfStudy || academic.institution || (profile.username ? `@${profile.username}` : profile.email);
+
   return (
     <div className="relative" ref={popoverRef}>
       {/* Avatar Trigger Button */}
@@ -48,10 +53,19 @@ export default function UserAvatarDropdown() {
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="User profile menu"
-        title="Ali Shair (CS Student)"
-        className="w-9 h-9 rounded-[12px] bg-[#023047] text-white flex items-center justify-center font-bold text-sm hover:ring-2 hover:ring-[#219EBC] transition-all shadow-xs cursor-pointer select-none"
+        title={profile.displayName}
+        className="w-9 h-9 rounded-[12px] bg-[#023047] text-white flex items-center justify-center font-extrabold text-xs hover:ring-2 hover:ring-[#219EBC] transition-all shadow-xs cursor-pointer select-none overflow-hidden"
       >
-        <User className="w-5 h-5 text-[#8ECAE6]" />
+        {profile.avatarUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={profile.avatarUrl}
+            alt={profile.displayName}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span>{getInitials(profile.displayName)}</span>
+        )}
       </button>
 
       {/* User Menu Popover */}
@@ -66,16 +80,18 @@ export default function UserAvatarDropdown() {
           >
             {/* User Info Header */}
             <div className="px-3 py-2 border-b border-slate-100 mb-1">
-              <div className="text-xs font-bold text-slate-900 truncate">Ali Shair</div>
+              <div className="text-xs font-extrabold text-slate-900 truncate">
+                {profile.displayName}
+              </div>
               <div className="text-[11px] font-semibold text-[#219EBC] truncate">
-                CS Student
+                {subtitle}
               </div>
             </div>
 
             {/* Menu Items */}
             <div className="space-y-0.5">
               <Link
-                href="/settings"
+                href="/dashboard/settings"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors"
               >
@@ -84,12 +100,12 @@ export default function UserAvatarDropdown() {
               </Link>
 
               <Link
-                href="/settings"
+                href="/dashboard/settings"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors"
               >
                 <Settings2 className="w-4 h-4 text-slate-400" />
-                <span>Settings</span>
+                <span>Account Settings</span>
               </Link>
 
               <div className="h-px bg-slate-100 my-1" />

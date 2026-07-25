@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { CircleUserRound, LogOut, Settings2, ChevronUp } from "lucide-react";
+import { LogOut, Settings2, ChevronUp } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 interface SidebarProfileProps {
   collapsed?: boolean;
@@ -14,11 +15,15 @@ interface SidebarProfileProps {
 export default function SidebarProfile({ collapsed = false }: SidebarProfileProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { profile, academic, getInitials } = useUserProfile();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
+
+  const subtitle =
+    academic.fieldOfStudy || academic.institution || profile.bio || "StudyMate Student";
 
   return (
     <div className="relative w-full">
@@ -29,19 +34,28 @@ export default function SidebarProfile({ collapsed = false }: SidebarProfileProp
         className={`w-full flex items-center gap-3 p-2.5 rounded-[12px] hover:bg-[#03405e] transition-colors duration-120 text-left select-none cursor-pointer group ${
           collapsed ? "justify-center px-0" : ""
         }`}
-        title={collapsed ? "Ali Shair (CS Student)" : undefined}
+        title={collapsed ? `${profile.displayName} (${subtitle})` : undefined}
       >
         {/* User Avatar */}
-        <div className="relative w-9 h-9 rounded-[10px] bg-[#219EBC] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
-          <CircleUserRound className="w-5 h-5 text-white" />
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#FFB703] border-2 border-[#023047] rounded-full" />
+        <div className="relative w-9 h-9 rounded-[10px] bg-[#219EBC] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs overflow-hidden">
+          {profile.avatarUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={profile.avatarUrl}
+              alt={profile.displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span>{getInitials(profile.displayName)}</span>
+          )}
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#FFB703] border-2 border-[#023047] rounded-full z-10" />
         </div>
 
         {/* User Name & Subtitle */}
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-white truncate">Ali Shair</div>
-            <div className="text-[11px] text-[#8ECAE6] truncate">CS Student</div>
+            <div className="text-xs font-bold text-white truncate">{profile.displayName}</div>
+            <div className="text-[11px] text-[#8ECAE6] truncate">{subtitle}</div>
           </div>
         )}
 
@@ -67,7 +81,7 @@ export default function SidebarProfile({ collapsed = false }: SidebarProfileProp
             }`}
           >
             <Link
-              href="/settings"
+              href="/dashboard/settings"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-xs font-semibold text-[#8ECAE6] hover:text-white hover:bg-[#03405e] transition-colors"
             >
