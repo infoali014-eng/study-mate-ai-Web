@@ -6,17 +6,29 @@ import MrOwl from "./MrOwl";
 import { useOwlStore } from "../../store/owlStore";
 import { DASHBOARD_SUGGESTIONS } from "./dashboardSuggestions";
 
-const SUGGESTION_INTERVAL = 18000; // ms between auto-suggestions while idle
-const INACTIVITY_TIMEOUT = 60000; // ms before becoming dizzy & sleeping
-const AUTO_WAKE_TIMEOUT = 10000; // ms to sleep before auto-waking
+const SUGGESTION_INTERVAL = 18000;
+const INACTIVITY_TIMEOUT = 60000;
+const AUTO_WAKE_TIMEOUT = 10000;
 
 export default function FloatingOwl() {
-  const { animState, message, enabled, say, setAnimState, setEnabled, clearMessage } =
-    useOwlStore();
+  const {
+    animState,
+    message,
+    enabled,
+    skin,
+    accessories,
+    glow,
+    eyeTracking,
+    say,
+    setAnimState,
+    setEnabled,
+    clearMessage,
+  } = useOwlStore();
 
   const [hasEntered, setHasEntered] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [showHidePopover, setShowHidePopover] = useState(false);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const suggestionIndexRef = useRef(0);
   const rotationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -24,7 +36,7 @@ export default function FloatingOwl() {
   const autoWakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const singleClickDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Watch OS reduced motion preference
+  // Reduced motion preference listener
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     setPrefersReducedMotion(mq.matches);
@@ -32,6 +44,16 @@ export default function FloatingOwl() {
     mq.addEventListener("change", listener);
     return () => mq.removeEventListener("change", listener);
   }, []);
+
+  // Mouse cursor tracking listener for pupil tracking
+  useEffect(() => {
+    if (!eyeTracking) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [eyeTracking]);
 
   const clearAllTimers = () => {
     if (rotationTimerRef.current) clearInterval(rotationTimerRef.current);
@@ -107,7 +129,7 @@ export default function FloatingOwl() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  // Start suggestions & inactivity timer once entered
+  // Start rotation once entered
   useEffect(() => {
     if (!hasEntered || !enabled) return;
 
@@ -122,7 +144,7 @@ export default function FloatingOwl() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasEntered, enabled]);
 
-  // Handle single click (debounced by 250ms to distinguish from double click)
+  // Debounced single click
   const handleSingleClick = () => {
     if (singleClickDebounceRef.current) clearTimeout(singleClickDebounceRef.current);
 
@@ -137,7 +159,7 @@ export default function FloatingOwl() {
     }, 250);
   };
 
-  // Handle double click (opens "Hide Mr Owl?" popover)
+  // Double click for hide popover
   const handleDoubleClick = () => {
     if (singleClickDebounceRef.current) {
       clearTimeout(singleClickDebounceRef.current);
@@ -167,7 +189,7 @@ export default function FloatingOwl() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="relative mb-3 mr-2 w-60 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl space-y-3"
+            className="relative mb-3 mr-2 w-60 rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-md p-4 shadow-2xl space-y-3"
           >
             <h4 className="text-xs font-black text-slate-900">Hide Mr Owl?</h4>
             <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
@@ -192,12 +214,12 @@ export default function FloatingOwl() {
                 Hide
               </button>
             </div>
-            <div className="absolute -bottom-[6px] right-8 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white" />
+            <div className="absolute -bottom-[6px] right-8 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white/95" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Suggestion Speech Bubble */}
+      {/* Glassmorphic Suggestion Speech Bubble */}
       <AnimatePresence>
         {!showHidePopover && message && animState !== "sleep" && animState !== "dizzy" && (
           <motion.div
@@ -205,24 +227,40 @@ export default function FloatingOwl() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative mb-3 mr-2 max-w-[240px] rounded-2xl border border-slate-200 bg-white p-4 text-xs font-semibold leading-relaxed text-slate-800 shadow-xl"
+            className="relative mb-3 mr-2 max-w-[240px] rounded-2xl border border-slate-200/80 bg-white/90 backdrop-blur-md p-4 text-xs font-semibold leading-relaxed text-slate-800 shadow-xl"
           >
             {message}
-            <div className="absolute -bottom-[6px] right-8 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white" />
+            <div className="absolute -bottom-[6px] right-8 h-3 w-3 rotate-45 border-b border-r border-slate-200 bg-white/90" />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Mr Owl Mascot Button */}
-      <button
-        type="button"
-        aria-label="Ask Mr Owl for a suggestion. Double click to hide."
-        onClick={handleSingleClick}
-        onDoubleClick={handleDoubleClick}
-        className="cursor-pointer rounded-full outline-hidden transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-sky-400"
-      >
-        <MrOwl animState={activeAnimState} size={92} />
-      </button>
+      {/* Mascot Wrapper with Optional Ambient Radial Glow */}
+      <div className="relative flex items-center justify-center">
+        {glow && (
+          <motion.div
+            animate={{ scale: [1, 1.1, 1], opacity: [0.35, 0.6, 0.35] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 bg-[#38BDF8] rounded-full blur-xl opacity-40 pointer-events-none"
+          />
+        )}
+
+        <button
+          type="button"
+          aria-label="Ask Mr Owl for a suggestion. Double click to hide."
+          onClick={handleSingleClick}
+          onDoubleClick={handleDoubleClick}
+          className="relative cursor-pointer rounded-full outline-hidden transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-sky-400"
+        >
+          <MrOwl
+            animState={activeAnimState}
+            size={92}
+            skin={skin}
+            accessories={accessories}
+            mousePos={eyeTracking ? mousePos : undefined}
+          />
+        </button>
+      </div>
     </div>
   );
 }
