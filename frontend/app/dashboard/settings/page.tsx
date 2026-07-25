@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import ProfileCard from "@/components/settings/ProfileCard";
 import AcademicCard from "@/components/settings/AcademicCard";
 import AIPreferencesCard from "@/components/settings/AIPreferencesCard";
+import OwlPreferencesCard from "@/components/settings/OwlPreferencesCard";
 import AIProviderCard from "@/components/settings/AIProviderCard";
 import NotificationCard from "@/components/settings/NotificationCard";
 import AppearanceCard from "@/components/settings/AppearanceCard";
@@ -71,8 +72,9 @@ export default function AccountSettingsPage() {
         )}
 
         {(activeTab === "all" || activeTab === "ai_prefs") && (
-          <div id="section-ai_prefs">
+          <div id="section-ai_prefs" className="space-y-6">
             <AIPreferencesCard />
+            <OwlPreferencesCard />
           </div>
         )}
 
