@@ -85,12 +85,12 @@ export default function OwlPreferencesCard() {
       </div>
 
       {/* 2. Interactive Live Studio Stage */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#023047] rounded-[16px] p-6 text-white shadow-inner flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-[#023047] rounded-[16px] p-6 text-white shadow-inner flex flex-col items-center justify-center relative overflow-visible">
         {/* Background Decorative Pattern */}
-        <div className="absolute inset-0 bg-[radial-gradient(#38BDF8_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(#38BDF8_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none rounded-[16px]" />
 
         {/* Live Owl Stage */}
-        <div className="relative z-10 my-4 flex items-center justify-center">
+        <div className="relative z-10 py-6 my-2 min-h-[220px] flex items-center justify-center overflow-visible">
           {glow && (
             <div className="absolute inset-0 bg-[#38BDF8] rounded-full blur-2xl opacity-30 animate-pulse" />
           )}

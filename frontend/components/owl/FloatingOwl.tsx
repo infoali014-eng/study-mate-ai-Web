@@ -250,7 +250,7 @@ export default function FloatingOwl() {
           aria-label="Ask Mr Owl for a suggestion. Double click to hide."
           onClick={handleSingleClick}
           onDoubleClick={handleDoubleClick}
-          className="relative cursor-pointer rounded-full outline-hidden transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-sky-400"
+          className="relative cursor-pointer overflow-visible p-1 rounded-full outline-hidden transition-transform hover:scale-105 focus-visible:ring-2 focus-visible:ring-sky-400"
         >
           <MrOwl
             animState={activeAnimState}

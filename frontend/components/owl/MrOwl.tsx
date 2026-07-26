@@ -40,16 +40,9 @@ interface MrOwlProps {
 const VIEWBOX_W = 602.13;
 const VIEWBOX_H = 644;
 
-// Raw-space (pre-translate) center of the whole figure and of the beak,
-// used as transform-origin so scale/rotate animations pivot correctly.
-const FIGURE_ORIGIN = { x: 7199.5, y: 7199.5 };
-const BEAK_ORIGIN = { x: 7199.54, y: 7146.46 };
-
-// Final-space (post-translate, matches the 602.13x644 viewBox) eye centers —
-// used to position the blink / sleep / dizzy overlays precisely over the
-// real eye artwork.
-const EYE_LEFT = { cx: 172.3, cy: 207.5, r: 84 };
-const EYE_RIGHT = { cx: 418.6, cy: 207.5, r: 84 };
+// Final-space eye centers — radius reduced to 51px so blink overlays stay strictly inside the eye sockets without turning forehead feathers white.
+const EYE_LEFT = { cx: 172.3, cy: 207.5, r: 51 };
+const EYE_RIGHT = { cx: 429.3, cy: 207.5, r: 51 };
 const INK = "#603813";
 const ACCENT_YELLOW = "#ffe065";
 
@@ -65,27 +58,30 @@ const containerVariants: Variants = {
   celebrate: { x: 0, opacity: 1 },
   sleep: { x: 0, opacity: 1 },
   dizzy: { x: 0, opacity: 1, transition: { duration: 0.3 } },
+  thinking: { x: 0, opacity: 1 },
+  curious: { x: 0, opacity: 1 },
+  night_owl: { x: 0, opacity: 1 },
 };
 
-// ---- Whole body: bob / wobble / squash ----
+// ---- Whole body: smooth bob / wobble / float (no vibration) ----
 const bodyVariants: Variants = {
   idle: {
-    y: [0, -6, -2, 4, 0],
-    rotate: [0, 1, -1.5, 1, 0],
-    scale: [1, 1.015, 1, 0.99, 1],
+    y: [0, -5, 0, 4, 0],
+    rotate: [0, 1.5, -1.5, 0],
+    scale: [1, 1.01, 1, 0.99, 1],
     transition: { duration: 4, ease: "easeInOut", repeat: Infinity },
   },
   "fly-in": {
-    y: [10, 0],
+    y: [15, 0],
     transition: { duration: 0.9, ease: "easeOut" },
   },
   talk: {
-    y: [0, -4, 0],
-    transition: { duration: 0.5, repeat: 3, ease: "easeInOut" },
+    y: [0, -3, 0],
+    transition: { duration: 0.4, repeat: 3, ease: "easeInOut" },
   },
   celebrate: {
-    rotate: [0, -8, 8, -6, 0],
-    scale: [1, 1.1, 1.04, 1.08, 1],
+    rotate: [0, -6, 6, -4, 0],
+    scale: [1, 1.06, 1.02, 1.05, 1],
     transition: { duration: 0.7, ease: "easeInOut" },
   },
   sleep: {
@@ -94,9 +90,24 @@ const bodyVariants: Variants = {
     transition: { duration: 3, ease: "easeInOut", repeat: Infinity },
   },
   dizzy: {
-    rotate: [0, -9, 9, -7, 7, -3, 0],
-    y: [0, -3, 3, -2, 0],
+    rotate: [0, -6, 6, -5, 5, 0],
+    y: [0, -2, 2, 0],
     transition: { duration: 1.4, ease: "easeInOut" },
+  },
+  thinking: {
+    rotate: [0, 4, 4, 0],
+    y: [0, -2, 0],
+    transition: { duration: 2, ease: "easeInOut", repeat: Infinity },
+  },
+  curious: {
+    rotate: -8,
+    y: -4,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+  night_owl: {
+    scale: [1, 1.02, 1],
+    y: [0, 1, 0],
+    transition: { duration: 3, ease: "easeInOut", repeat: Infinity },
   },
 };
 
@@ -111,6 +122,9 @@ const beakVariants: Variants = {
   sleep: { scaleY: 1 },
   dizzy: { scaleY: 0.85 },
   "fly-in": { scaleY: 1 },
+  thinking: { scaleY: 1 },
+  curious: { scaleY: 1 },
+  night_owl: { scaleY: 1 },
 };
 
 export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
@@ -133,12 +147,21 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
   const height = size * (VIEWBOX_H / VIEWBOX_W);
 
   return (
-    <motion.div variants={containerVariants} animate={animState} style={{ width: size, height }}>
-      <svg viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`} width={size} height={height}>
+    <motion.div
+      variants={containerVariants}
+      animate={animState}
+      style={{ width: size, height, overflow: "visible" }}
+    >
+      <svg
+        viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
+        width={size}
+        height={height}
+        style={{ overflow: "visible" }}
+      >
         <motion.g
           variants={bodyVariants}
           animate={animState}
-          style={{ originX: `${FIGURE_ORIGIN.x}px`, originY: `${FIGURE_ORIGIN.y}px` }}
+          style={{ originX: "50%", originY: "50%" }}
         >
           {/* Raw Illustrator coordinate space */}
           <g transform="translate(-6898.44 -6877.46)">
@@ -199,7 +222,7 @@ export default function MrOwl({ animState = "idle", size = 140 }: MrOwlProps) {
             <motion.g
               variants={beakVariants}
               animate={animState}
-              style={{ originX: `${BEAK_ORIGIN.x}px`, originY: `${BEAK_ORIGIN.y}px` }}
+              style={{ originX: "50%", originY: "50%" }}
             >
               <path fill="#ffe065" d="M7211.67,7116c2.25,2.53,2.64,5,1.65,6.6a17.93,17.93,0,0,1,6.73-3.72h0l-.48-.52a20.25,20.25,0,0,0-2.17-1.94,23.5,23.5,0,0,0-5.21-3.09,31.19,31.19,0,0,0-10-2.32,20.07,20.07,0,0,1,4.61,1.46A15.59,15.59,0,0,1,7211.67,7116Z" />
               <path fill="#ffe065" d="M7198.23,7148.65c6.24-7.13,7.49-18,13.79-24.76a11.09,11.09,0,0,1-4.86,1.24c-1.26.08-2.63.13-4,.08s-2.88-.08-4.42-.2-3-.21-4.41-.39-2.73-.37-4-.62c-2.46-.54-4.68-1.3-5.67-3.05s-.29-4.26,2.41-6.57a15,15,0,0,1,4.63-2.61,29.08,29.08,0,0,0-4.89,1.57,23.5,23.5,0,0,0-5.21,3.09,20.25,20.25,0,0,0-2.17,1.94l-.48.52-.11.12v0h0a.12.12,0,0,0-.06.06.34.34,0,0,0,0,.09l.18.49C7188.91,7125.53,7194.57,7136.75,7198.23,7148.65Z" />
