@@ -26,7 +26,7 @@ export const useOnboardingStore = create<OnboardingStoreState>()(
       reset: () => set({ ...INITIAL_ANSWERS, currentStep: 1 }),
     }),
     {
-      name: "studymate-onboarding-draft",
+      name: "deepcode-onboarding-draft",
     }
   )
 );

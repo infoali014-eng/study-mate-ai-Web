@@ -11,16 +11,10 @@ function getR2Credentials() {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-  const bucketName = process.env.R2_BUCKET_NAME || "studymate-files";
+  const bucketName = process.env.R2_BUCKET_NAME || "deepcode-files";
 
-  if (!accountId) {
-    throw new Error("[Cloudflare R2] Configuration Error: R2_ACCOUNT_ID environment variable is missing.");
-  }
-  if (!accessKeyId) {
-    throw new Error("[Cloudflare R2] Configuration Error: R2_ACCESS_KEY_ID environment variable is missing.");
-  }
-  if (!secretAccessKey) {
-    throw new Error("[Cloudflare R2] Configuration Error: R2_SECRET_ACCESS_KEY environment variable is missing.");
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    return null;
   }
 
   return { accountId, accessKeyId, secretAccessKey, bucketName };
@@ -30,21 +24,23 @@ function getR2Credentials() {
  * Returns a configured AWS S3 Client instance targeting Cloudflare R2 S3 API.
  * Credentials remain strictly on the server-side.
  */
-export function getR2Client(): S3Client {
-  const { accountId, accessKeyId, secretAccessKey } = getR2Credentials();
+export function getR2Client(): S3Client | null {
+  const creds = getR2Credentials();
+  if (!creds) return null;
 
   return new S3Client({
     region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint: `https://${creds.accountId}.r2.cloudflarestorage.com`,
     credentials: {
-      accessKeyId,
-      secretAccessKey,
+      accessKeyId: creds.accessKeyId,
+      secretAccessKey: creds.secretAccessKey,
     },
   });
 }
 
 export function getR2BucketName(): string {
-  return getR2Credentials().bucketName;
+  const creds = getR2Credentials();
+  return creds ? creds.bucketName : "deepcode-files";
 }
 
 /**
@@ -54,8 +50,9 @@ export async function uploadFileToR2(
   fileKey: string,
   body: Buffer | Uint8Array,
   mimeType: string
-): Promise<{ success: boolean; fileKey: string }> {
+): Promise<{ success: boolean; fileKey: string } | null> {
   const client = getR2Client();
+  if (!client) return null;
   const bucketName = getR2BucketName();
 
   const command = new PutObjectCommand({
@@ -72,13 +69,8 @@ export async function uploadFileToR2(
       fileKey,
     };
   } catch (error: unknown) {
-    const errMessage = error instanceof Error ? error.message : String(error);
-    if (errMessage.includes("Access Denied") || errMessage.includes("AccessDenied")) {
-      throw new Error(
-        `Cloudflare R2 Access Denied: The Access Key ID or API token does not have "Object Read & Write" permission for bucket "${bucketName}". Please check R2 API Token permissions in Cloudflare Dashboard.`
-      );
-    }
-    throw error;
+    console.error("[Cloudflare R2] Upload error:", error);
+    return null;
   }
 }
 
@@ -88,6 +80,7 @@ export async function uploadFileToR2(
 export async function deleteFileFromR2(fileKey: string): Promise<boolean> {
   try {
     const client = getR2Client();
+    if (!client) return false;
     const bucketName = getR2BucketName();
 
     const command = new DeleteObjectCommand({
@@ -111,6 +104,7 @@ export async function generateR2SignedUrl(
 ): Promise<string> {
   try {
     const client = getR2Client();
+    if (!client) return fileKey;
     const bucketName = getR2BucketName();
 
     const command = new GetObjectCommand({
@@ -124,7 +118,7 @@ export async function generateR2SignedUrl(
     return signedUrl;
   } catch (error) {
     console.error(`[Cloudflare R2] Error generating signed URL for "${fileKey}":`, error);
-    throw error;
+    return fileKey;
   }
 }
 
@@ -134,6 +128,7 @@ export async function generateR2SignedUrl(
 export async function checkFileExistsInR2(fileKey: string): Promise<boolean> {
   try {
     const client = getR2Client();
+    if (!client) return false;
     const bucketName = getR2BucketName();
 
     const command = new HeadObjectCommand({

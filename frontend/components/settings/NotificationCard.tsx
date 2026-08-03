@@ -75,7 +75,7 @@ export default function NotificationCard() {
           <h2 className="text-base font-extrabold text-slate-900">Notifications</h2>
         </div>
         <p className="text-xs text-slate-500 font-medium mt-0.5">
-          Control which reminders and alerts you receive from StudyMate AI.
+          Control which reminders and alerts you receive from DeepCode.
         </p>
       </div>
 

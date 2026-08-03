@@ -22,7 +22,7 @@ export class SettingsService {
    */
   static async getProfileSettings(): Promise<ProfileSettings> {
     const supabase = getSupabaseClient();
-    let email = "user@studymate.ai";
+    let email = "user@deepcode.ai";
     let userId: string | null = null;
 
     try {

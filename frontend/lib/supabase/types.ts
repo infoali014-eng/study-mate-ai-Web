@@ -1,4 +1,12 @@
-export interface Database {
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type Database = {
   public: {
     Tables: {
       profiles: {
@@ -35,6 +43,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       user_preferences: {
         Row: {
@@ -67,6 +76,7 @@ export interface Database {
           dashboard_focus?: "library" | "chat" | "quiz" | "flashcards" | "planner";
           updated_at?: string;
         };
+        Relationships: [];
       };
       user_onboarding: {
         Row: {
@@ -105,6 +115,7 @@ export interface Database {
           completed?: boolean;
           completed_at?: string | null;
         };
+        Relationships: [];
       };
       folders: {
         Row: {
@@ -140,6 +151,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       notes: {
         Row: {
@@ -196,6 +208,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       note_versions: {
         Row: {
@@ -231,6 +244,7 @@ export interface Database {
           created_by?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       note_contents: {
         Row: {
@@ -263,6 +277,7 @@ export interface Database {
           embedding_status?: "pending" | "embedded" | "failed";
           created_at?: string;
         };
+        Relationships: [];
       };
       library_activity: {
         Row: {
@@ -289,6 +304,7 @@ export interface Database {
           details?: Record<string, unknown> | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       tags: {
         Row: {
@@ -312,6 +328,7 @@ export interface Database {
           color?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       note_tags: {
         Row: {
@@ -326,6 +343,7 @@ export interface Database {
           note_id?: string;
           tag_id?: string;
         };
+        Relationships: [];
       };
       note_shares: {
         Row: {
@@ -355,7 +373,524 @@ export interface Database {
           permission?: "view" | "comment" | "edit";
           created_at?: string;
         };
+        Relationships: [];
+      };
+      courses: {
+        Row: {
+          id: string;
+          title: string;
+          slug: string;
+          short_description: string;
+          full_description: string;
+          thumbnail_url: string | null;
+          difficulty: "beginner" | "intermediate" | "advanced";
+          category: string;
+          tags: string[];
+          status: "draft" | "published" | "archived";
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          slug: string;
+          short_description: string;
+          full_description?: string;
+          thumbnail_url?: string | null;
+          difficulty?: "beginner" | "intermediate" | "advanced";
+          category: string;
+          tags?: string[];
+          status?: "draft" | "published" | "archived";
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          slug?: string;
+          short_description?: string;
+          full_description?: string;
+          thumbnail_url?: string | null;
+          difficulty?: "beginner" | "intermediate" | "advanced";
+          category?: string;
+          tags?: string[];
+          status?: "draft" | "published" | "archived";
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      course_sections: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string | null;
+          order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string | null;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          description?: string | null;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      lectures: {
+        Row: {
+          id: string;
+          section_id: string;
+          title: string;
+          slug: string;
+          description: string | null;
+          video_url: string | null;
+          notes_pdf_url: string | null;
+          order: number;
+          status: "draft" | "published";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          section_id: string;
+          title: string;
+          slug: string;
+          description?: string | null;
+          video_url?: string | null;
+          notes_pdf_url?: string | null;
+          order?: number;
+          status?: "draft" | "published";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          section_id?: string;
+          title?: string;
+          slug?: string;
+          description?: string | null;
+          video_url?: string | null;
+          notes_pdf_url?: string | null;
+          order?: number;
+          status?: "draft" | "published";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quizzes: {
+        Row: {
+          id: string;
+          lecture_id: string;
+          title: string;
+          passing_percentage: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          lecture_id: string;
+          title: string;
+          passing_percentage?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          lecture_id?: string;
+          title?: string;
+          passing_percentage?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quiz_questions: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          question: string;
+          option_a: string;
+          option_b: string;
+          option_c: string;
+          option_d: string;
+          correct_option: "A" | "B" | "C" | "D";
+          explanation: string | null;
+          order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quiz_id: string;
+          question: string;
+          option_a: string;
+          option_b: string;
+          option_c: string;
+          option_d: string;
+          correct_option: "A" | "B" | "C" | "D";
+          explanation?: string | null;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          quiz_id?: string;
+          question?: string;
+          option_a?: string;
+          option_b?: string;
+          option_c?: string;
+          option_d?: string;
+          correct_option?: "A" | "B" | "C" | "D";
+          explanation?: string | null;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tasks: {
+        Row: {
+          id: string;
+          lecture_id: string;
+          title: string;
+          description: string;
+          difficulty: "easy" | "medium" | "hard";
+          order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          lecture_id: string;
+          title: string;
+          description: string;
+          difficulty?: "easy" | "medium" | "hard";
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          lecture_id?: string;
+          title?: string;
+          description?: string;
+          difficulty?: "easy" | "medium" | "hard";
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_settings: {
+        Row: {
+          id: string;
+          hero_title: string;
+          hero_subtitle: string;
+          hero_badge: string | null;
+          hero_primary_btn_text: string | null;
+          hero_primary_btn_url: string | null;
+          hero_secondary_btn_text: string | null;
+          hero_secondary_btn_url: string | null;
+          hero_media_type: "logo" | "image" | "video" | "illustration" | "none";
+          hero_media_url: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          og_image_url: string | null;
+          keywords: string | null;
+          canonical_url: string | null;
+          favicon_url: string | null;
+          theme_primary: string | null;
+          theme_accent: string | null;
+          theme_radius: string | null;
+          visibility_flags: Json;
+          footer_description: string | null;
+          copyright_text: string | null;
+          footer_links: Json;
+          social_links: Json;
+          feature_cards: Json;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          hero_title: string;
+          hero_subtitle?: string;
+          hero_badge?: string | null;
+          hero_primary_btn_text?: string | null;
+          hero_primary_btn_url?: string | null;
+          hero_secondary_btn_text?: string | null;
+          hero_secondary_btn_url?: string | null;
+          hero_media_type?: "logo" | "image" | "video" | "illustration" | "none";
+          hero_media_url?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          og_image_url?: string | null;
+          keywords?: string | null;
+          canonical_url?: string | null;
+          favicon_url?: string | null;
+          theme_primary?: string | null;
+          theme_accent?: string | null;
+          theme_radius?: string | null;
+          visibility_flags?: Json;
+          footer_description?: string | null;
+          copyright_text?: string | null;
+          footer_links?: Json;
+          social_links?: Json;
+          feature_cards?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          hero_title?: string;
+          hero_subtitle?: string;
+          hero_badge?: string | null;
+          hero_primary_btn_text?: string | null;
+          hero_primary_btn_url?: string | null;
+          hero_secondary_btn_text?: string | null;
+          hero_secondary_btn_url?: string | null;
+          hero_media_type?: "logo" | "image" | "video" | "illustration" | "none";
+          hero_media_url?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          og_image_url?: string | null;
+          keywords?: string | null;
+          canonical_url?: string | null;
+          favicon_url?: string | null;
+          theme_primary?: string | null;
+          theme_accent?: string | null;
+          theme_radius?: string | null;
+          visibility_flags?: Json;
+          footer_description?: string | null;
+          copyright_text?: string | null;
+          footer_links?: Json;
+          social_links?: Json;
+          feature_cards?: Json;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_navigation: {
+        Row: {
+          id: string;
+          label: string;
+          url: string;
+          order: number;
+          is_hidden: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          label: string;
+          url: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          label?: string;
+          url?: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_highlights: {
+        Row: {
+          id: string;
+          icon: string;
+          title: string;
+          description: string;
+          order: number;
+          is_hidden: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          icon: string;
+          title: string;
+          description: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          icon?: string;
+          title?: string;
+          description?: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_products: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          status: "active" | "coming_soon" | "beta" | "new" | "updated" | "maintenance";
+          logo_url: string | null;
+          button_text: string;
+          button_url: string;
+          order: number;
+          is_hidden: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description: string;
+          status?: "active" | "coming_soon" | "beta" | "new" | "updated" | "maintenance";
+          logo_url?: string | null;
+          button_text?: string;
+          button_url?: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string;
+          status?: "active" | "coming_soon" | "beta" | "new" | "updated" | "maintenance";
+          logo_url?: string | null;
+          button_text?: string;
+          button_url?: string;
+          order?: number;
+          is_hidden?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_footer_sections: {
+        Row: {
+          id: string;
+          title: string;
+          order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_footer_links: {
+        Row: {
+          id: string;
+          section_id: string;
+          label: string;
+          url: string;
+          order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          section_id: string;
+          label: string;
+          url: string;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          section_id?: string;
+          label?: string;
+          url?: string;
+          order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      homepage_announcements: {
+        Row: {
+          id: string;
+          title: string;
+          badge_text: string | null;
+          link_text: string | null;
+          link_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          badge_text?: string | null;
+          link_text?: string | null;
+          link_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          badge_text?: string | null;
+          link_text?: string | null;
+          link_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
     };
+    Views: {
+      [_ in never]: never
+    };
+    Functions: {
+      [_ in never]: never
+    };
+    Enums: {
+      [_ in never]: never
+    };
+    CompositeTypes: {
+      [_ in never]: never
+    };
   };
-}
+};

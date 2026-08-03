@@ -75,7 +75,7 @@ export default function AppearanceCard() {
           <h2 className="text-base font-extrabold text-slate-900">Appearance</h2>
         </div>
         <p className="text-xs text-slate-500 font-medium mt-0.5">
-          Customize the visual theme and interface mode for StudyMate AI.
+          Customize the visual theme and interface mode for DeepCode.
         </p>
       </div>
 

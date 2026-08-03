@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { loginSchema, LoginInput } from "@/lib/validation/authSchemas";
 import { supabase } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { useOwlStore } from "@/store/owlStore";
 import { OWL_MESSAGES } from "@/components/owl/owlMessages";
 import { PasswordInput } from "@/components/auth/PasswordInput";
@@ -41,7 +42,7 @@ export default function LoginForm() {
           password: data.password,
         }),
         requestTimeout
-      ])) as { data: { user: { id: string } | null; session: { user: { id: string } } | null } | null; error: { message: string } | null };
+      ])) as { data: { user: User | null; session: { user: User } | null } | null; error: { message: string } | null };
 
       if (error) {
         toast.error(error.message);
@@ -51,8 +52,10 @@ export default function LoginForm() {
       }
 
       const user = authData?.user || authData?.session?.user || (await supabase.auth.getUser()).data.user;
-      console.log("[Auth] Login success. Auth session detected for user ID:", user?.id);
+      const userRole = user?.user_metadata?.role || user?.app_metadata?.role;
+      const isAdmin = userRole === "admin";
 
+      console.log(`[Auth] Login success. User ID: ${user?.id}, Role: ${userRole}`);
       toast.success("Successfully logged in!");
       say(OWL_MESSAGES.success.text, OWL_MESSAGES.success.mood);
 
@@ -72,8 +75,7 @@ export default function LoginForm() {
         }
       }
 
-      console.log(`[Auth] Onboarding loaded value: completed=${isCompleted}`);
-      const targetRoute = isCompleted ? "/dashboard" : "/onboarding";
+      const targetRoute = isAdmin ? "/admin" : (isCompleted ? "/dashboard" : "/onboarding");
       console.log(`[Auth] Redirect target: ${targetRoute}`);
 
       router.refresh();

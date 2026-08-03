@@ -23,7 +23,7 @@ export default function SidebarProfile({ collapsed = false }: SidebarProfileProp
   };
 
   const subtitle =
-    academic.fieldOfStudy || academic.institution || profile.bio || "StudyMate Student";
+    academic.fieldOfStudy || academic.institution || profile.bio || "DeepCode Developer";
 
   return (
     <div className="relative w-full">

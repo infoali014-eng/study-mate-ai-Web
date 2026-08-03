@@ -28,15 +28,24 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+    }
+
     // 1. Fetch note details
     const { data: note, error: fetchError } = await supabase
       .from("notes")
       .select("*")
       .eq("id", noteId)
+      .eq("user_id", user.id)
       .single();
 
     if (fetchError || !note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+      return NextResponse.json({ error: "Note not found or unauthorized" }, { status: 404 });
     }
 
     // 2. Check if other notes reference the same file_key (deduplication check before deleting R2 file)

@@ -92,7 +92,7 @@ export default function AIProviderCard() {
           </span>
         </div>
         <p className="text-xs text-slate-500 font-medium mt-0.5">
-          Connect your Google Gemini API key to power StudyMate AI features.
+          Connect your Google Gemini API key to power DeepCode AI features.
         </p>
       </div>
 
