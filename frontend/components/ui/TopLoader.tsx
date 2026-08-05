@@ -1,16 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export const TopLoader: React.FC = () => {
+const TopLoaderContent: React.FC = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // When route changes complete, finalize progress bar
     setProgress(100);
     const timer = setTimeout(() => {
       setLoading(false);
@@ -20,7 +19,6 @@ export const TopLoader: React.FC = () => {
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    // Intercept clicks on links and cards to trigger progress bar immediately (< 10ms)
     const handleAnchorClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const anchor = target.closest("a");
@@ -50,5 +48,13 @@ export const TopLoader: React.FC = () => {
         style={{ width: `${progress}%` }}
       />
     </div>
+  );
+};
+
+export const TopLoader: React.FC = () => {
+  return (
+    <Suspense fallback={null}>
+      <TopLoaderContent />
+    </Suspense>
   );
 };

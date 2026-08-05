@@ -41,7 +41,9 @@ export const metadata: Metadata = {
   },
 };
 
+import { Suspense } from "react";
 import { TopLoader } from "@/components/ui/TopLoader";
+import { Analytics } from "@vercel/analytics/next";
 
 export default function RootLayout({
   children,
@@ -52,10 +54,14 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ReactQueryProvider>
-          <TopLoader />
+          <Suspense fallback={null}>
+            <TopLoader />
+          </Suspense>
           {children}
           {/* Sonner toast system */}
           <Toaster position="top-center" richColors />
+          {/* Vercel Web Analytics */}
+          <Analytics />
         </ReactQueryProvider>
       </body>
     </html>
