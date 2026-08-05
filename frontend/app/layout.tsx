@@ -19,12 +19,12 @@ export const metadata: Metadata = {
     "DeepCode is your all-in-one platform to learn in-depth, build real-world projects, and connect with a global community of developers.",
   icons: {
     icon: [
-      { url: "/branding/deepcode/logo.png" },
-      { url: "/favicon.ico" },
-      { url: "/icon.png" },
+      { url: "/branding/deepcode/logo.png?v=2", type: "image/png" },
+      { url: "/icon.png?v=2", type: "image/png" },
+      { url: "/favicon.ico?v=2" },
     ],
-    shortcut: "/branding/deepcode/logo.png",
-    apple: "/apple-icon.png",
+    shortcut: "/branding/deepcode/logo.png?v=2",
+    apple: "/apple-icon.png?v=2",
   },
   openGraph: {
     title: "DeepCode - Interactive Developer Platform",
