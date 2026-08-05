@@ -41,6 +41,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { TopLoader } from "@/components/ui/TopLoader";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -50,6 +52,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ReactQueryProvider>
+          <TopLoader />
           {children}
           {/* Sonner toast system */}
           <Toaster position="top-center" richColors />
