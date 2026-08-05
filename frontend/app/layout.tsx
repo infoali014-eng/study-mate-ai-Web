@@ -44,6 +44,7 @@ export const metadata: Metadata = {
 import { Suspense } from "react";
 import { TopLoader } from "@/components/ui/TopLoader";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export default function RootLayout({
   children,
@@ -62,6 +63,8 @@ export default function RootLayout({
           <Toaster position="top-center" richColors />
           {/* Vercel Web Analytics */}
           <Analytics />
+          {/* Vercel Speed Insights */}
+          <SpeedInsights />
         </ReactQueryProvider>
       </body>
     </html>
