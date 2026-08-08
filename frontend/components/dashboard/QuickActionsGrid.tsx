@@ -40,7 +40,7 @@ export default function QuickActionsGrid() {
       id: "ai",
       title: "Ask Owl AI",
       description: "Chat with your personal AI study assistant.",
-      href: "/chat",
+      href: "/dashboard/chat",
       icon: Bot,
       iconBg: "bg-[#023047]/10 text-[#023047] group-hover:bg-[#023047] group-hover:text-white",
     },

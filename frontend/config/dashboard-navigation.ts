@@ -117,7 +117,7 @@ export const DASHBOARD_NAVIGATION: NavSection[] = [
       {
         id: "owl_ai",
         title: "Owl AI",
-        href: "/chat",
+        href: "/dashboard/chat",
         icon: Bot,
       },
       {

@@ -225,27 +225,17 @@ export class SettingsService {
    */
   static async getAIProviderSettings(
     provider: AIProvider = "gemini"
-  ): Promise<AIProviderSettings> {
-    const supabase = getSupabaseClient();
+  ): Promise<AIProviderSettings & { maskedKey?: string }> {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data: record } = await (supabase as any)
-          .from("user_ai_providers")
-          .select("encrypted_api_key")
-          .eq("user_id", user.id)
-          .eq("provider", provider)
-          .maybeSingle();
-
-        if (record && record.encrypted_api_key) {
-          return {
-            provider,
-            apiKey: record.encrypted_api_key,
-            hasKey: true,
-          };
-        }
+      const res = await fetch("/api/settings/ai-key", { method: "GET" });
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          provider,
+          apiKey: "",
+          hasKey: data.hasKey || false,
+          maskedKey: data.maskedKey || "",
+        };
       }
     } catch {
       // Fallback
@@ -255,6 +245,7 @@ export class SettingsService {
       provider,
       apiKey: "",
       hasKey: false,
+      maskedKey: "",
     };
   }
 
@@ -276,31 +267,35 @@ export class SettingsService {
   static async saveAIProviderKey(
     provider: AIProvider,
     apiKey: string
-  ): Promise<{ success: boolean; message: string }> {
-    const supabase = getSupabaseClient();
+  ): Promise<{ success: boolean; message: string; maskedKey?: string }> {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: true, message: "API key saved locally." };
-      }
-
-      const { error } = await (supabase as any).from("user_ai_providers").upsert(
-        {
-          user_id: user.id,
-          provider,
-          encrypted_api_key: apiKey,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,provider" }
-      );
-
-      if (error) throw error;
-      return { success: true, message: `${provider.toUpperCase()} API key saved securely!` };
+      const res = await fetch("/api/settings/ai-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey, provider }),
+      });
+      return await res.json();
     } catch (err: any) {
       console.error("[SettingsService] saveAIProviderKey error:", err);
       return { success: false, message: err.message || "Failed to save API key." };
+    }
+  }
+
+  static async testStoredAIProviderKey(): Promise<{ valid: boolean; message: string }> {
+    try {
+      const res = await fetch("/api/settings/ai-key/test", { method: "POST" });
+      return await res.json();
+    } catch (err: any) {
+      return { valid: false, message: err.message || "Connection test failed." };
+    }
+  }
+
+  static async deleteAIProviderKey(): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await fetch("/api/settings/ai-key", { method: "DELETE" });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, message: err.message || "Failed to remove key." };
     }
   }
 
