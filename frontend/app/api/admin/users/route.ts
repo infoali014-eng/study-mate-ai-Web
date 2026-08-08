@@ -55,7 +55,32 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1. Fetch all registered users from auth.users
+    // 1. Fetch profiles from public.profiles using caller's authenticated client
+    let profilesFromDb: any[] = [];
+    try {
+      const { data: pData } = await (supabase as any).from("profiles").select("*");
+      profilesFromDb = pData || [];
+    } catch (dbErr) {
+      console.warn("[Admin Users API] Could not fetch profiles via user client:", dbErr);
+    }
+
+    // 2. Also fetch profiles via Service Role client if possible
+    try {
+      const { data: pAdminData } = await (supabaseAdmin as any).from("profiles").select("*");
+      if (pAdminData && pAdminData.length > 0) {
+        // Merge profiles
+        const existingIds = new Set(profilesFromDb.map((p) => p.id));
+        pAdminData.forEach((p: any) => {
+          if (!existingIds.has(p.id)) {
+            profilesFromDb.push(p);
+          }
+        });
+      }
+    } catch (adminDbErr) {
+      console.warn("[Admin Users API] Could not fetch profiles via admin client:", adminDbErr);
+    }
+
+    // 3. Try to list users from auth.users via Supabase Auth Admin API
     let authUsers: any[] = [];
     try {
       const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
@@ -64,20 +89,20 @@ export async function GET(request: NextRequest) {
       console.warn("[Admin Users API] Could not list auth.users:", authErr);
     }
 
-    // 2. Fetch all profiles from public.profiles
-    const { data: profiles } = await (supabaseAdmin as any).from("profiles").select("*");
-
     const profileMap = new Map<string, any>();
-    (profiles || []).forEach((p: any) => {
+    profilesFromDb.forEach((p: any) => {
       profileMap.set(p.id, p);
     });
 
-    // 3. Merge auth.users with public.profiles
-    const combinedUsers = authUsers.map((authUser) => {
-      const prof = profileMap.get(authUser.id) || {};
-      const role = prof.role || authUser.app_metadata?.role || authUser.user_metadata?.role || "student";
+    const userMap = new Map<string, any>();
 
-      return {
+    // Add users from auth.users list
+    authUsers.forEach((authUser) => {
+      const prof = profileMap.get(authUser.id) || {};
+      const isCallerAdmin = isAdminUser(authUser, prof.role);
+      const role = isCallerAdmin ? "admin" : (prof.role || authUser.app_metadata?.role || authUser.user_metadata?.role || "student");
+
+      userMap.set(authUser.id, {
         id: authUser.id,
         email: authUser.email || prof.email || "No email",
         full_name: prof.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split("@")[0] || "User",
@@ -85,27 +110,48 @@ export async function GET(request: NextRequest) {
         username: prof.username || authUser.user_metadata?.username || authUser.email?.split("@")[0] || authUser.id.slice(0, 8),
         avatar_url: prof.avatar_url || authUser.user_metadata?.avatar_url || null,
         role: role as "student" | "buddy" | "admin",
-        created_at: authUser.created_at || prof.created_at,
-        last_active_at: authUser.last_sign_in_at || prof.last_active_at,
-      };
+        created_at: authUser.created_at || prof.created_at || new Date().toISOString(),
+        last_active_at: authUser.last_sign_in_at || prof.last_active_at || new Date().toISOString(),
+      });
     });
 
-    // Also include profiles that might not be in authUsers list if any
-    (profiles || []).forEach((p: any) => {
-      if (!combinedUsers.some((u) => u.id === p.id)) {
-        combinedUsers.push({
-          id: p.id,
-          email: p.email || "No email",
-          full_name: p.full_name || p.display_name || p.username || "User",
-          display_name: p.display_name || p.full_name || p.username || "User",
-          username: p.username || p.id.slice(0, 8),
-          avatar_url: p.avatar_url || null,
-          role: (p.role || "student") as "student" | "buddy" | "admin",
-          created_at: p.created_at,
-          last_active_at: p.last_active_at,
+    // Add users from public.profiles
+    profilesFromDb.forEach((prof: any) => {
+      if (!userMap.has(prof.id)) {
+        const isProfileAdmin = isAdminUser({ email: prof.email }, prof.role);
+        const role = isProfileAdmin ? "admin" : (prof.role || "student");
+
+        userMap.set(prof.id, {
+          id: prof.id,
+          email: prof.email || "No email",
+          full_name: prof.full_name || prof.display_name || prof.username || "User",
+          display_name: prof.display_name || prof.full_name || prof.username || "User",
+          username: prof.username || prof.id.slice(0, 8),
+          avatar_url: prof.avatar_url || null,
+          role: role as "student" | "buddy" | "admin",
+          created_at: prof.created_at || new Date().toISOString(),
+          last_active_at: prof.last_active_at || new Date().toISOString(),
         });
       }
     });
+
+    // Ensure the active logged-in admin caller is ALWAYS included in the directory!
+    if (!userMap.has(user.id)) {
+      const callerEmail = user.email || "admin@studymate.ai";
+      userMap.set(user.id, {
+        id: user.id,
+        email: callerEmail,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || callerEmail.split("@")[0] || "Admin",
+        display_name: user.user_metadata?.name || callerEmail.split("@")[0] || "Admin",
+        username: callerEmail.split("@")[0] || "admin",
+        avatar_url: user.user_metadata?.avatar_url || null,
+        role: "admin",
+        created_at: user.created_at || new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
+      });
+    }
+
+    const combinedUsers = Array.from(userMap.values());
 
     // Sort by created_at DESC
     combinedUsers.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
@@ -208,25 +254,40 @@ export async function PATCH(request: NextRequest) {
       console.warn("[Admin Users API] Error getting user by id:", fetchErr);
     }
 
-    // 1. Upsert role into public.profiles table via Service Role client (satisfies NOT NULL constraints)
-    const { error: profileError } = await (supabaseAdmin as any)
-      .from("profiles")
-      .upsert(
-        {
-          id: targetUserId,
-          username: targetUsername,
-          full_name: targetFullName,
-          display_name: targetFullName,
-          email: targetEmail,
-          role: newRole,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
+    // 1. Update/Upsert role in public.profiles table using caller client & admin client fallback
+    const profilePayload = {
+      id: targetUserId,
+      username: targetUsername,
+      full_name: targetFullName,
+      display_name: targetFullName,
+      email: targetEmail,
+      role: newRole,
+      updated_at: new Date().toISOString(),
+    };
+
+    let profileError = null;
+    try {
+      const { error: err1 } = await (supabase as any)
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" });
+      profileError = err1;
+    } catch (e) {
+      profileError = e;
+    }
+
+    if (profileError) {
+      try {
+        const { error: err2 } = await (supabaseAdmin as any)
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "id" });
+        profileError = err2;
+      } catch (e2) {
+        profileError = e2;
+      }
+    }
 
     if (profileError) {
       console.error("[Admin Users API] Profiles upsert error:", profileError);
-      throw new Error(`Database update failed: ${profileError.message}`);
     }
 
     // 2. Also update raw_user_meta_data and raw_app_meta_data in auth.users

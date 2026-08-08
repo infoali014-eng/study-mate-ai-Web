@@ -33,13 +33,42 @@ export async function GET(request: NextRequest) {
     // Query role from public.profiles table
     const { data: profile } = await (supabase as any)
       .from("profiles")
-      .select("role")
+      .select("*")
       .eq("id", user.id)
       .maybeSingle();
 
     const isAdmin = isAdminUser(user, profile?.role);
     const hasBuddyAccess = hasBuddyOrAdminAccess(user, profile?.role);
-    const role = isAdmin ? "admin" : (profile?.role || user.user_metadata?.role || user.app_metadata?.role || "student");
+    const role = isAdmin
+      ? "admin"
+      : profile?.role || user.user_metadata?.role || user.app_metadata?.role || "student";
+
+    // Auto-sync profile to public.profiles if missing or email/role unpopulated
+    if (!profile || !profile.email) {
+      const email = user.email || "";
+      const name =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        email.split("@")[0] ||
+        "User";
+
+      try {
+        await (supabase as any).from("profiles").upsert(
+          {
+            id: user.id,
+            username: user.user_metadata?.username || email.split("@")[0] || user.id.slice(0, 8),
+            full_name: name,
+            display_name: name,
+            email: email,
+            role: role,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+      } catch (syncErr) {
+        console.warn("[Role API] Error auto-syncing profile:", syncErr);
+      }
+    }
 
     return NextResponse.json({
       userId: user.id,
