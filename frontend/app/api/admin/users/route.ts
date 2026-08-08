@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminUser } from "@/lib/security/roles";
 
 function getSupabaseServer(request: NextRequest) {
   return createServerClient(
@@ -44,9 +45,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const callerRole = callerProfile?.role || user.user_metadata?.role || user.app_metadata?.role;
-
-    if (callerRole !== "admin") {
+    if (!isAdminUser(user, callerProfile?.role)) {
       return NextResponse.json({ error: "Forbidden: Admin privileges required." }, { status: 403 });
     }
 
@@ -169,9 +168,7 @@ export async function PATCH(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const callerRole = callerProfile?.role || user.user_metadata?.role || user.app_metadata?.role;
-
-    if (callerRole !== "admin") {
+    if (!isAdminUser(user, callerProfile?.role)) {
       return NextResponse.json({ error: "Forbidden: Admin privileges required." }, { status: 403 });
     }
 

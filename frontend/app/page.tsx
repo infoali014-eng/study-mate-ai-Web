@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isAdminUser } from "@/lib/security/roles";
 import { Container } from "@/components/landing/Container";
 import { Hero } from "@/components/landing/Hero";
 import { Section } from "@/components/landing/Section";
@@ -32,8 +33,12 @@ export default async function PublicHomepage() {
     } = await supabase.auth.getUser();
     if (user) {
       userEmail = user.email || null;
-      const userRole = user.user_metadata?.role || user.app_metadata?.role;
-      isAdmin = userRole === "admin";
+      const { data: profile } = await (supabase as any)
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      isAdmin = isAdminUser(user, profile?.role);
     }
   } catch (error) {
     console.error("[Homepage] Auth check error:", error);

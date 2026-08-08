@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { isAdminUser, hasBuddyOrAdminAccess } from "@/lib/security/roles";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -26,8 +27,6 @@ export async function middleware(request: NextRequest) {
 
   const { response, user, supabase } = await updateSession(request);
 
-  console.log(`[Middleware] Path: ${pathname} | Auth User: ${user?.id ?? "None"}`);
-
   // 1. Unauthenticated User Flow
   if (!user) {
     if (isProtectedAppRoute || isOnboardingRoute || isAdminRoute) {
@@ -39,7 +38,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 2. Authenticated User Flow — Strict Database Role Checking
+  // 2. Authenticated User Flow — Strict Database & Admin Email Checking
   if (supabase) {
     try {
       const queryTimeout = new Promise((_, reject) =>
@@ -56,30 +55,29 @@ export async function middleware(request: NextRequest) {
         queryTimeout,
       ])) as any;
 
-      const userRole = profile?.role || user.user_metadata?.role || user.app_metadata?.role || "student";
-      const isAdmin = userRole === "admin";
-      const hasBuddyAccess = userRole === "buddy" || userRole === "admin";
+      const isAdmin = isAdminUser(user, profile?.role);
+      const hasBuddyAccess = hasBuddyOrAdminAccess(user, profile?.role);
 
-      console.log(`[Middleware] User: ${user.id} | Database Role: ${userRole} | BuddyAccess: ${hasBuddyAccess}`);
+      console.log(`[Middleware] User: ${user.email} | IsAdmin: ${isAdmin} | BuddyAccess: ${hasBuddyAccess}`);
 
       // 2a. Admin Route Protection — Only Admin can access /admin
       if (isAdminRoute && !isAdmin) {
-        console.log(`[Middleware] Non-admin user ${user.id} (role: ${userRole}) tried to access admin route ${pathname} -> Redirecting to /`);
+        console.log(`[Middleware] Non-admin user ${user.id} tried to access admin route ${pathname} -> Redirecting to /`);
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/";
         return NextResponse.redirect(redirectUrl);
       }
 
       // 2b. StudyMate AI App Access Protection — Only Buddy or Admin can access StudyMate AI!
-      if ((isProtectedAppRoute || isOnboardingRoute) && !hasBuddyAccess) {
-        console.log(`[Middleware] User ${user.id} without Buddy role (role: ${userRole}) tried to access ${pathname} -> Redirecting to /access-denied`);
+      if ((isProtectedAppRoute || isOnboardingRoute) && !hasBuddyAccess && !isAdmin) {
+        console.log(`[Middleware] User ${user.email} without Buddy role tried to access ${pathname} -> Redirecting to /access-denied`);
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/access-denied";
         return NextResponse.redirect(redirectUrl);
       }
 
-      // If user has Buddy access and is on /access-denied, redirect to /dashboard
-      if (isAccessDeniedRoute && hasBuddyAccess) {
+      // If user has Buddy or Admin access and is on /access-denied, redirect
+      if (isAccessDeniedRoute && (hasBuddyAccess || isAdmin)) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = isAdmin ? "/admin" : "/dashboard";
         return NextResponse.redirect(redirectUrl);
@@ -100,25 +98,27 @@ export async function middleware(request: NextRequest) {
       // Redirect logged-in users away from /login and /signup
       if (isAuthRoute) {
         const redirectUrl = request.nextUrl.clone();
-        if (!hasBuddyAccess) {
+        if (isAdmin) {
+          redirectUrl.pathname = "/admin";
+        } else if (!hasBuddyAccess) {
           redirectUrl.pathname = "/access-denied";
         } else {
-          redirectUrl.pathname = isAdmin ? "/admin" : (isCompleted ? "/dashboard" : "/onboarding");
+          redirectUrl.pathname = isCompleted ? "/dashboard" : "/onboarding";
         }
         return NextResponse.redirect(redirectUrl);
       }
 
       // Force incomplete onboarding users to complete it if they have Buddy access
-      if (isProtectedAppRoute && !isCompleted && hasBuddyAccess) {
+      if (isProtectedAppRoute && !isCompleted && hasBuddyAccess && !isAdmin) {
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/onboarding";
         return NextResponse.redirect(redirectUrl);
       }
 
       // Prevent completed onboarding users from returning to /onboarding
-      if (isOnboardingRoute && isCompleted && hasBuddyAccess) {
+      if (isOnboardingRoute && isCompleted && (hasBuddyAccess || isAdmin)) {
         const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/dashboard";
+        redirectUrl.pathname = isAdmin ? "/admin" : "/dashboard";
         return NextResponse.redirect(redirectUrl);
       }
     } catch (err) {

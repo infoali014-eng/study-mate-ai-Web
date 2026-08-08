@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isAdminUser, hasBuddyOrAdminAccess } from "@/lib/security/roles";
 
 function getSupabaseServer(request: NextRequest) {
   return createServerClient(
@@ -36,13 +37,15 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const role = profile?.role || user.user_metadata?.role || user.app_metadata?.role || "student";
-    const hasBuddyAccess = role === "buddy" || role === "admin";
+    const isAdmin = isAdminUser(user, profile?.role);
+    const hasBuddyAccess = hasBuddyOrAdminAccess(user, profile?.role);
+    const role = isAdmin ? "admin" : (profile?.role || user.user_metadata?.role || user.app_metadata?.role || "student");
 
     return NextResponse.json({
       userId: user.id,
       email: user.email,
       role,
+      isAdmin,
       hasBuddyAccess,
     });
   } catch (err: any) {
