@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1. Fetch all registered users from auth.users (Guarantees ALL logged-in users are visible!)
+    // 1. Fetch all registered users from auth.users
     let authUsers: any[] = [];
     try {
       const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Fetch all profiles from public.profiles
-    const { data: profiles } = await (supabase as any).from("profiles").select("*");
+    const { data: profiles } = await (supabaseAdmin as any).from("profiles").select("*");
 
     const profileMap = new Map<string, any>();
     (profiles || []).forEach((p: any) => {
@@ -185,12 +185,39 @@ export async function PATCH(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // 1. Upsert role in public.profiles table (Primary source of truth for database roles)
-    const { error: profileError } = await (supabase as any)
+    // Fetch Target User Info from Auth Admin to satisfy NOT NULL constraints on profiles
+    let targetEmail = "";
+    let targetFullName = "User";
+    let targetUsername = targetUserId.slice(0, 8);
+
+    try {
+      const { data: targetAuthUser } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+      if (targetAuthUser?.user) {
+        targetEmail = targetAuthUser.user.email || "";
+        targetFullName =
+          targetAuthUser.user.user_metadata?.full_name ||
+          targetAuthUser.user.user_metadata?.name ||
+          targetEmail.split("@")[0] ||
+          "User";
+        targetUsername =
+          targetAuthUser.user.user_metadata?.username ||
+          targetEmail.split("@")[0] ||
+          targetUserId.slice(0, 8);
+      }
+    } catch (fetchErr) {
+      console.warn("[Admin Users API] Error getting user by id:", fetchErr);
+    }
+
+    // 1. Upsert role into public.profiles table via Service Role client (satisfies NOT NULL constraints)
+    const { error: profileError } = await (supabaseAdmin as any)
       .from("profiles")
       .upsert(
         {
           id: targetUserId,
+          username: targetUsername,
+          full_name: targetFullName,
+          display_name: targetFullName,
+          email: targetEmail,
           role: newRole,
           updated_at: new Date().toISOString(),
         },
@@ -198,10 +225,11 @@ export async function PATCH(request: NextRequest) {
       );
 
     if (profileError) {
-      console.warn("[Admin Users API] Profiles upsert error:", profileError);
+      console.error("[Admin Users API] Profiles upsert error:", profileError);
+      throw new Error(`Database update failed: ${profileError.message}`);
     }
 
-    // 2. Also update raw_user_meta_data and raw_app_meta_data in auth.users so user session reflects role immediately
+    // 2. Also update raw_user_meta_data and raw_app_meta_data in auth.users
     try {
       await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
         user_metadata: { role: newRole },
