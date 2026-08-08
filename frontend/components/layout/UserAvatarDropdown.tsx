@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { CircleUserRound, Settings2, LogOut } from "lucide-react";
+import { CircleUserRound, Settings2, LogOut, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -11,8 +11,20 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 export default function UserAvatarDropdown() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const { profile, academic, getInitials } = useUserProfile();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const role = user.user_metadata?.role || user.app_metadata?.role;
+        if (role === "admin") {
+          setIsAdmin(true);
+        }
+      }
+    });
+  }, []);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -90,6 +102,17 @@ export default function UserAvatarDropdown() {
 
             {/* Menu Items */}
             <div className="space-y-0.5">
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-xs font-black text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors mb-1"
+                >
+                  <ShieldCheck className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Admin CMS Panel</span>
+                </Link>
+              )}
+
               <Link
                 href="/dashboard/settings"
                 onClick={() => setIsOpen(false)}

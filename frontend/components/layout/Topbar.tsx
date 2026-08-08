@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Menu,
   Search,
   PanelLeftOpen,
   PanelLeftClose,
+  ShieldCheck,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
 import Breadcrumb from "./Breadcrumb";
 import SearchModal from "./SearchModal";
 import NotificationsDropdown from "./NotificationsDropdown";
@@ -27,6 +30,18 @@ export default function Topbar({
   title,
 }: TopbarProps) {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        const role = user.user_metadata?.role || user.app_metadata?.role;
+        if (role === "admin") {
+          setIsAdmin(true);
+        }
+      }
+    });
+  }, []);
 
   // Listen for global Cmd+K or Ctrl+K
   useEffect(() => {
@@ -97,7 +112,19 @@ export default function Topbar({
           {/* 3. Notifications Button & Dropdown */}
           <NotificationsDropdown />
 
-          {/* 4. User Avatar & Menu Dropdown */}
+          {/* 4. Admin Panel Switcher (Only visible to admin users) */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#023047] hover:bg-[#03405e] text-[#38BDF8] border border-[#38BDF8]/40 rounded-[12px] text-xs font-black transition-all shadow-xs shrink-0"
+              title="Return to Deep Code Admin CMS"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#38BDF8]" />
+              <span className="hidden sm:inline">Admin Panel</span>
+            </Link>
+          )}
+
+          {/* 5. User Avatar & Menu Dropdown */}
           <div className="pl-1 border-l border-slate-200 ml-1">
             <UserAvatarDropdown />
           </div>
