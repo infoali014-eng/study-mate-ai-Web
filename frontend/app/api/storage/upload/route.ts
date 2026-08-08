@@ -3,8 +3,6 @@ import crypto from "crypto";
 import { uploadFileToR2 } from "@/lib/storage/r2";
 import { createServerClient } from "@supabase/ssr";
 
-export const dynamic = "force-dynamic";
-
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
