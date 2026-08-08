@@ -12,10 +12,7 @@ import {
 import { CourseFormModal } from "@/components/admin/CourseFormModal";
 import { LectureManager } from "@/components/admin/LectureManager";
 import { HomepageSettingsTab } from "@/components/admin/HomepageSettingsTab";
-import { MrOwlAIAppHub } from "@/components/admin/MrOwlAIAppHub";
-import { CommunitySettingsTab } from "@/components/admin/CommunitySettingsTab";
-import { UsersManagementTab } from "@/components/admin/UsersManagementTab";
-import { PlatformSettingsTab } from "@/components/admin/PlatformSettingsTab";
+import OwlPreferencesCard from "@/components/settings/OwlPreferencesCard";
 
 export default function AdminPage() {
   const {
@@ -365,17 +362,42 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 5. MR OWL AI APPLICATION HUB */}
-      {activeTab === "owl" && <MrOwlAIAppHub />}
+      {/* 5. MR OWL AI TAB */}
+      {activeTab === "owl" && (
+        <div className="space-y-8 animate-fade-in select-none">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mr Owl AI Studio</h2>
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">
+              Configure assistant appearance, color skins, accessories, and dashboard integration
+            </p>
+          </div>
+          <OwlPreferencesCard />
+        </div>
+      )}
 
-      {/* 6. JOIN DEEP CODE COMMUNITY TAB */}
-      {activeTab === "community" && <CommunitySettingsTab />}
+      {/* 6. SCAFFOLDED MODULES (COMMUNITY, USERS, SETTINGS) */}
+      {["community", "users", "settings"].includes(activeTab) && (
+        <div className="space-y-8 animate-fade-in select-none">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight capitalize">
+              {activeTab === "community"
+                ? "Join Deep Code Management"
+                : activeTab === "users"
+                ? "User Operations Directory"
+                : "Platform Configurations"}
+            </h2>
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">Clean scaffolding placeholder panel for future integrations</p>
+          </div>
 
-      {/* 7. USERS TAB */}
-      {activeTab === "users" && <UsersManagementTab />}
-
-      {/* 8. SETTINGS TAB */}
-      {activeTab === "settings" && <PlatformSettingsTab />}
+          <div className="bg-white border border-slate-200/80 p-8 rounded-2xl text-center space-y-2 shadow-xs">
+            <span className="text-3xl">⚙️</span>
+            <h4 className="text-sm font-bold text-slate-800">Module Scaffolding</h4>
+            <p className="text-slate-500 text-xs leading-relaxed max-w-sm mx-auto font-medium">
+              This settings panel is fully structured in the middleware and routes configurations, ready to bind when feature deployment resumes.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
