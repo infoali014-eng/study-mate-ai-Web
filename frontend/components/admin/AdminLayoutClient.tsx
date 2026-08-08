@@ -17,10 +17,10 @@ export const AdminLayoutClient: React.FC<AdminLayoutClientProps> = ({ children }
     { id: "homepage", label: "Homepage", icon: "🏠", comingSoon: false },
     { id: "courses", label: "Courses", icon: "📚", comingSoon: false },
     { id: "media", label: "Media Library", icon: "📁", comingSoon: false },
-    { id: "owl", label: "Mr Owl AI", icon: "🦉", comingSoon: true },
-    { id: "community", label: "Join Deep Code", icon: "👥", comingSoon: true },
-    { id: "users", label: "Users", icon: "👤", comingSoon: true },
-    { id: "settings", label: "Settings", icon: "⚙️", comingSoon: true },
+    { id: "owl", label: "Mr Owl AI", icon: "🦉", comingSoon: false },
+    { id: "community", label: "Join Deep Code", icon: "👥", comingSoon: false },
+    { id: "users", label: "Users", icon: "👤", comingSoon: false },
+    { id: "settings", label: "Settings", icon: "⚙️", comingSoon: false },
   ] as const;
 
   return (

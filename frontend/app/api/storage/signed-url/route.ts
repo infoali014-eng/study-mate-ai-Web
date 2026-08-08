@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateR2SignedUrl } from "@/lib/storage/r2";
 import { createServerClient } from "@supabase/ssr";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
