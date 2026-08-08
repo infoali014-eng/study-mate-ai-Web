@@ -13,6 +13,7 @@ import { CourseFormModal } from "@/components/admin/CourseFormModal";
 import { LectureManager } from "@/components/admin/LectureManager";
 import { HomepageSettingsTab } from "@/components/admin/HomepageSettingsTab";
 import OwlPreferencesCard from "@/components/settings/OwlPreferencesCard";
+import UsersManagementTab from "@/components/admin/UsersManagementTab";
 
 export default function AdminPage() {
   const {
@@ -383,15 +384,16 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 6. SCAFFOLDED MODULES (COMMUNITY, USERS, SETTINGS) */}
-      {["community", "users", "settings"].includes(activeTab) && (
+      {/* 6. USERS MANAGEMENT DIRECTORY TAB */}
+      {activeTab === "users" && <UsersManagementTab />}
+
+      {/* 7. OTHER SCAFFOLDED MODULES (COMMUNITY, SETTINGS) */}
+      {["community", "settings"].includes(activeTab) && (
         <div className="space-y-8 animate-fade-in select-none">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight capitalize">
               {activeTab === "community"
                 ? "Join Deep Code Management"
-                : activeTab === "users"
-                ? "User Operations Directory"
                 : "Platform Configurations"}
             </h2>
             <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">Clean scaffolding placeholder panel for future integrations</p>

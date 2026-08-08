@@ -18,6 +18,7 @@ import {
   AlertCircle,
   KeyRound,
   FileText,
+  Lock,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { StudyLibraryDrawer } from "@/components/chat/StudyLibraryDrawer";
@@ -83,6 +84,37 @@ export default function MrOwlChatPage() {
   const { skin, accessories } = useOwlStore();
 
   const [owlMood, setOwlMood] = useState<OwlAnimState>("idle");
+
+  const [userRoleInfo, setUserRoleInfo] = useState<{
+    role: string;
+    hasBuddyAccess: boolean;
+    loading: boolean;
+  }>({
+    role: "student",
+    hasBuddyAccess: true,
+    loading: true,
+  });
+
+  useEffect(() => {
+    async function checkRole() {
+      try {
+        const res = await fetch("/api/user/role");
+        if (res.ok) {
+          const data = await res.json();
+          setUserRoleInfo({
+            role: data.role || "student",
+            hasBuddyAccess: data.hasBuddyAccess ?? false,
+            loading: false,
+          });
+        } else {
+          setUserRoleInfo({ role: "student", hasBuddyAccess: false, loading: false });
+        }
+      } catch {
+        setUserRoleInfo({ role: "student", hasBuddyAccess: false, loading: false });
+      }
+    }
+    checkRole();
+  }, []);
 
   // Scroll to bottom when messages change
   const scrollToBottom = () => {
@@ -252,6 +284,48 @@ export default function MrOwlChatPage() {
       setSending(false);
     }
   };
+
+  if (!userRoleInfo.loading && !userRoleInfo.hasBuddyAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[75vh] p-6 text-center select-none">
+        <div className="bg-white border border-slate-200 shadow-xl rounded-[24px] p-8 max-w-md w-full space-y-6 animate-fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600 shadow-2xs">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100/70 text-amber-800 border border-amber-300">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Buddy Access Required
+            </span>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">
+              Unlock StudyMate AI Access
+            </h3>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              Access to Mr Owl AI study assistant is reserved for users assigned the <strong className="text-slate-900">Buddy</strong> role by an administrator.
+            </p>
+          </div>
+
+          <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-[14px] text-left text-xs space-y-1 font-mono">
+            <div className="text-[#023047] font-bold">Database Access Status:</div>
+            <div className="text-slate-600">Current Role: <span className="font-extrabold text-amber-700 uppercase">{userRoleInfo.role}</span></div>
+            <div className="text-slate-400 text-[10px]">Verified against public.profiles database table</div>
+          </div>
+
+          <div className="pt-2 space-y-2">
+            <Link
+              href="/dashboard"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#023047] hover:bg-[#03405e] text-white font-extrabold text-xs rounded-[14px] transition-all shadow-xs"
+            >
+              ← Return to Dashboard
+            </Link>
+            <p className="text-[11px] text-slate-400 font-medium">
+              Ask your admin to assign you the <strong>"Buddy"</strong> role in Admin Panel → User Operations Directory.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-5rem)] bg-slate-50 border border-slate-200/80 rounded-[20px] overflow-hidden shadow-xs select-none">

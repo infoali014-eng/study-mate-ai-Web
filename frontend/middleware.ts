@@ -46,8 +46,8 @@ export async function middleware(request: NextRequest) {
       const userRole = user.user_metadata?.role || user.app_metadata?.role;
       const isAdmin = userRole === "admin";
 
-      if ((isDashboardRoute || isOnboardingRoute || isAdminRoute) && !isAdmin) {
-        console.log(`[Middleware] Non-admin user ${user.id} (role: ${userRole}) tried to access protected route ${pathname} -> Redirecting to homepage`);
+      if (isAdminRoute && !isAdmin) {
+        console.log(`[Middleware] Non-admin user ${user.id} (role: ${userRole}) tried to access admin route ${pathname} -> Redirecting to homepage`);
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/";
         return NextResponse.redirect(redirectUrl);
