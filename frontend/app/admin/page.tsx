@@ -12,7 +12,7 @@ import {
 import { CourseFormModal } from "@/components/admin/CourseFormModal";
 import { LectureManager } from "@/components/admin/LectureManager";
 import { HomepageSettingsTab } from "@/components/admin/HomepageSettingsTab";
-import { MrOwlAIChatTab } from "@/components/admin/MrOwlAIChatTab";
+import { MrOwlAIAppHub } from "@/components/admin/MrOwlAIAppHub";
 import { CommunitySettingsTab } from "@/components/admin/CommunitySettingsTab";
 import { UsersManagementTab } from "@/components/admin/UsersManagementTab";
 import { PlatformSettingsTab } from "@/components/admin/PlatformSettingsTab";
@@ -365,8 +365,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 5. MR OWL AI TAB */}
-      {activeTab === "owl" && <MrOwlAIChatTab />}
+      {/* 5. MR OWL AI APPLICATION HUB */}
+      {activeTab === "owl" && <MrOwlAIAppHub />}
 
       {/* 6. JOIN DEEP CODE COMMUNITY TAB */}
       {activeTab === "community" && <CommunitySettingsTab />}

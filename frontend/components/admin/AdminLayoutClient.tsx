@@ -110,15 +110,21 @@ export const AdminLayoutClient: React.FC<AdminLayoutClientProps> = ({ children }
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-6 border-t border-slate-100 space-y-4">
+        <div className="pt-6 border-t border-slate-100 space-y-2.5">
+          <Link
+            href="/dashboard"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#219EBC] hover:bg-[#1a849e] text-white text-xs sm:text-sm font-black shadow-xs transition-all select-none"
+          >
+            🚀 Launch Mr Owl AI App
+          </Link>
           <Link
             href="/"
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-350 text-xs sm:text-sm font-bold transition-colors select-none"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-bold transition-colors select-none"
           >
-            ← Exit to Site
+            🏠 Exit to Public Site
           </Link>
-          <div className="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider select-none">
-            Security Zone
+          <div className="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider select-none pt-1">
+            Admin Security Zone
           </div>
         </div>
       </aside>
