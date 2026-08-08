@@ -20,7 +20,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
   );
 };
 
-// Component: Typeset LaTeX Display Math (Block)
+// Component: Typeset LaTeX Display Math (Centered Block)
 const MathDisplay: React.FC<{ math: string }> = ({ math }) => {
   const html = React.useMemo(() => {
     try {
@@ -29,7 +29,7 @@ const MathDisplay: React.FC<{ math: string }> = ({ math }) => {
         throwOnError: false,
       });
     } catch {
-      return `<span class="katex-error">${math}</span>`;
+      return `<span>${math}</span>`;
     }
   }, [math]);
 
@@ -62,11 +62,27 @@ const MathInline: React.FC<{ math: string }> = ({ math }) => {
   );
 };
 
-// Check if string contains LaTeX math commands (\int, \frac, \sqrt, \sum, \lim, \partial, etc.)
+// Check if string contains LaTeX math commands (\int, \frac, \sqrt, \sum, \lim, etc.)
 function isMathExpression(str: string): boolean {
   return /\\(int|frac|sqrt|sum|lim|partial|alpha|beta|gamma|theta|pi|sigma|infty|approx|times|div|pm|leq|geq|neq|vec|hat|bar|matrix|begin|end|cdot|partial|dx|dy|dt)/i.test(
     str
   );
+}
+
+// Check if a standalone line is purely a mathematical equation without prose words
+function isPureMathLine(str: string): boolean {
+  const clean = str.trim();
+  if (!clean) return false;
+  // Strip common math commands before checking for prose text
+  const stripped = clean.replace(
+    /\\(int|frac|sqrt|sum|lim|partial|alpha|beta|gamma|theta|pi|sigma|infty|approx|times|div|pm|leq|geq|neq|vec|hat|bar|matrix|begin|end|sin|cos|tan|log|ln|dx|dy|dt)/gi,
+    ""
+  );
+  // If line still contains normal English prose words (3+ letters), it's a paragraph, not pure display math
+  if (/[a-zA-Z]{3,}/.test(stripped)) {
+    return false;
+  }
+  return /\\(int|frac|sqrt|sum|lim|partial|matrix|begin|end|=|dx|dy)/.test(clean);
 }
 
 // Main Parser
@@ -107,7 +123,7 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
     }
 
     const headerLine = tableBuffer[0];
-    const dataLines = tableBuffer.slice(2); // Skip separator line |---|---|
+    const dataLines = tableBuffer.slice(2);
 
     const parseRow = (line: string) =>
       line
@@ -199,9 +215,9 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Handle Standalone Math Line (e.g. \int (3x^2 + 2x - 5) \, dx) when NOT inside code block
+    // Handle Standalone Pure Math Line (without prose words)
     if (
-      isMathExpression(trimmedLine) &&
+      isPureMathLine(trimmedLine) &&
       !trimmedLine.startsWith("|") &&
       !trimmedLine.startsWith("#") &&
       !trimmedLine.startsWith(">")
@@ -243,10 +259,26 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
       flushList(`${i}`);
     }
 
-    // Handle Headings
+    // Handle Headings (H1 - H5)
+    if (line.startsWith("##### ")) {
+      nodes.push(
+        <h5 key={i} className="text-xs font-black text-[#023047] mt-3 mb-1 tracking-tight">
+          {formatInlineFormatting(line.slice(6))}
+        </h5>
+      );
+      continue;
+    }
+    if (line.startsWith("#### ")) {
+      nodes.push(
+        <h4 key={i} className="text-xs font-black text-[#023047] mt-3 mb-1.5 tracking-tight uppercase">
+          {formatInlineFormatting(line.slice(5))}
+        </h4>
+      );
+      continue;
+    }
     if (line.startsWith("### ")) {
       nodes.push(
-        <h3 key={i} className="text-base font-black text-[#023047] mt-4 mb-2 tracking-tight">
+        <h3 key={i} className="text-sm font-black text-[#023047] mt-4 mb-2 tracking-tight">
           {formatInlineFormatting(line.slice(4))}
         </h3>
       );
@@ -254,7 +286,7 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
     }
     if (line.startsWith("## ")) {
       nodes.push(
-        <h2 key={i} className="text-lg font-black text-[#023047] mt-5 mb-2 tracking-tight border-b border-slate-200 pb-1">
+        <h2 key={i} className="text-base font-black text-[#023047] mt-5 mb-2 tracking-tight border-b border-slate-200 pb-1">
           {formatInlineFormatting(line.slice(3))}
         </h2>
       );
@@ -262,7 +294,7 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
     }
     if (line.startsWith("# ")) {
       nodes.push(
-        <h1 key={i} className="text-xl font-black text-[#023047] mt-6 mb-3 tracking-tight">
+        <h1 key={i} className="text-lg font-black text-[#023047] mt-6 mb-3 tracking-tight">
           {formatInlineFormatting(line.slice(2))}
         </h1>
       );
@@ -320,8 +352,9 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
   return nodes;
 }
 
-// Format Inline Elements: **bold**, *italic*, `code`, and KaTeX inline math ($...$ / \(...\) / \int)
+// Format Inline Elements: **bold**, *italic*, `code`, and KaTeX inline math ($...$ / \(...\))
 function formatInlineFormatting(text: string): React.ReactNode {
+  if (!text) return null;
   const parts: React.ReactNode[] = [];
   let remaining = text;
   let keyIdx = 0;
@@ -339,15 +372,13 @@ function formatInlineFormatting(text: string): React.ReactNode {
       continue;
     }
 
-    // 2. Fenced Inline Code `code` (Only if it's NOT a LaTeX math string inside backticks)
+    // 2. Fenced Inline Code `code` (If inner content is pure LaTeX math, render as MathInline!)
     const codeMatch = remaining.match(/^`([^`]+)`/);
     if (codeMatch) {
       const innerContent = codeMatch[1];
-      if (isMathExpression(innerContent)) {
-        // Render math LaTeX inside backticks properly using KaTeX instead of dark code pill!
+      if (isMathExpression(innerContent) && !innerContent.includes(";") && !innerContent.includes("=")) {
         parts.push(<MathInline key={`mathinline-code-${keyIdx++}`} math={innerContent} />);
       } else {
-        // Render actual computer code pill
         parts.push(
           <code
             key={`code-${keyIdx++}`}
@@ -361,23 +392,31 @@ function formatInlineFormatting(text: string): React.ReactNode {
       continue;
     }
 
-    // 3. Bold **text**
+    // 3. Bold **text** -> Recursively format inner content to extract inline math!
     const boldMatch = remaining.match(/^\*\*([^\*]+)\*\*/);
     if (boldMatch) {
-      parts.push(<strong key={`bold-${keyIdx++}`} className="font-extrabold text-slate-950">{boldMatch[1]}</strong>);
+      parts.push(
+        <strong key={`bold-${keyIdx++}`} className="font-extrabold text-slate-950">
+          {formatInlineFormatting(boldMatch[1])}
+        </strong>
+      );
       remaining = remaining.slice(boldMatch[0].length);
       continue;
     }
 
-    // 4. Italic *text*
+    // 4. Italic *text* -> Recursively format inner content to extract inline math!
     const italicMatch = remaining.match(/^\*([^\*]+)\*/);
     if (italicMatch) {
-      parts.push(<em key={`italic-${keyIdx++}`} className="italic text-slate-800">{italicMatch[1]}</em>);
+      parts.push(
+        <em key={`italic-${keyIdx++}`} className="italic text-slate-800">
+          {formatInlineFormatting(italicMatch[1])}
+        </em>
+      );
       remaining = remaining.slice(italicMatch[0].length);
       continue;
     }
 
-    // Slice forward
+    // Normal text slice
     const nextSpecial = remaining.search(/[`\*\$]/);
     if (nextSpecial === -1) {
       parts.push(remaining);
