@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import katex from "katex";
+import { Check, Copy, Info, AlertTriangle } from "lucide-react";
 
 interface MarkdownRendererProps {
   content: string;
@@ -10,7 +11,6 @@ interface MarkdownRendererProps {
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   if (!content) return null;
 
-  // Process math notation ($...$ or $$...$$) and callouts before line split
   const renderedBlocks = parseMarkdownBlocks(content);
 
   return (
@@ -20,7 +20,56 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
   );
 };
 
-// Helper: Parse code blocks, tables, math, callouts, lists, headers
+// Component: Typeset LaTeX Display Math (Block)
+const MathDisplay: React.FC<{ math: string }> = ({ math }) => {
+  const html = React.useMemo(() => {
+    try {
+      return katex.renderToString(math.trim(), {
+        displayMode: true,
+        throwOnError: false,
+      });
+    } catch {
+      return `<span class="katex-error">${math}</span>`;
+    }
+  }, [math]);
+
+  return (
+    <div
+      className="my-3.5 py-3 px-4 bg-[#023047]/5 border border-[#219EBC]/20 rounded-xl overflow-x-auto text-center text-slate-900 shadow-2xs"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+};
+
+// Component: Typeset LaTeX Inline Math
+const MathInline: React.FC<{ math: string }> = ({ math }) => {
+  const html = React.useMemo(() => {
+    try {
+      return katex.renderToString(math.trim(), {
+        displayMode: false,
+        throwOnError: false,
+      });
+    } catch {
+      return `<span>${math}</span>`;
+    }
+  }, [math]);
+
+  return (
+    <span
+      className="inline-block px-1 text-slate-900 font-normal"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+};
+
+// Check if string contains LaTeX math commands (\int, \frac, \sqrt, \sum, \lim, \partial, etc.)
+function isMathExpression(str: string): boolean {
+  return /\\(int|frac|sqrt|sum|lim|partial|alpha|beta|gamma|theta|pi|sigma|infty|approx|times|div|pm|leq|geq|neq|vec|hat|bar|matrix|begin|end|cdot|partial|dx|dy|dt)/i.test(
+    str
+  );
+}
+
+// Main Parser
 function parseMarkdownBlocks(text: string): React.ReactNode[] {
   const lines = text.split("\n");
   const nodes: React.ReactNode[] = [];
@@ -105,10 +154,9 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Handle Code Block Fences ```
+    // Handle Fenced Code Blocks ```
     if (line.trim().startsWith("```")) {
       if (inCodeBlock) {
-        // Close code block
         nodes.push(
           <CodeBlock
             key={`code-${i}`}
@@ -120,7 +168,6 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
         codeLanguage = "";
         inCodeBlock = false;
       } else {
-        // Open code block
         flushList(`${i}`);
         flushTable(`${i}`);
         inCodeBlock = true;
@@ -131,6 +178,37 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
 
     if (inCodeBlock) {
       codeBuffer.push(line);
+      continue;
+    }
+
+    // Handle Display Math Blocks $$ ... $$ or \[ ... \] or \begin{...}
+    const trimmedLine = line.trim();
+    if (
+      (trimmedLine.startsWith("$$") && trimmedLine.endsWith("$$") && trimmedLine.length > 4) ||
+      (trimmedLine.startsWith("\\[") && trimmedLine.endsWith("\\]")) ||
+      trimmedLine.startsWith("\\begin{")
+    ) {
+      flushList(`${i}`);
+      flushTable(`${i}`);
+      const rawMath = trimmedLine
+        .replace(/^\$\$/, "")
+        .replace(/\$\$$/, "")
+        .replace(/^\\\[/, "")
+        .replace(/\\\]$/, "");
+      nodes.push(<MathDisplay key={`mathdisp-${i}`} math={rawMath} />);
+      continue;
+    }
+
+    // Handle Standalone Math Line (e.g. \int (3x^2 + 2x - 5) \, dx) when NOT inside code block
+    if (
+      isMathExpression(trimmedLine) &&
+      !trimmedLine.startsWith("|") &&
+      !trimmedLine.startsWith("#") &&
+      !trimmedLine.startsWith(">")
+    ) {
+      flushList(`${i}`);
+      flushTable(`${i}`);
+      nodes.push(<MathDisplay key={`mathdisp-raw-${i}`} math={trimmedLine} />);
       continue;
     }
 
@@ -191,7 +269,7 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Handle GitHub Style Callouts > [!NOTE] / > [!IMPORTANT] / > [!WARNING]
+    // Handle Callouts
     if (line.trim().startsWith("> [!NOTE]") || line.trim().startsWith("> [!IMPORTANT]")) {
       const calloutText = line.replace(/^>\s*\[!(NOTE|IMPORTANT)\]\s*/i, "");
       nodes.push(
@@ -214,7 +292,7 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Handle Standard Blockquotes >
+    // Handle Standard Blockquotes
     if (line.startsWith("> ")) {
       nodes.push(
         <blockquote key={i} className="pl-4 border-l-3 border-[#219EBC] italic text-slate-600 text-xs my-2">
@@ -224,7 +302,6 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Handle Empty Line
     if (!line.trim()) {
       continue;
     }
@@ -243,40 +320,43 @@ function parseMarkdownBlocks(text: string): React.ReactNode[] {
   return nodes;
 }
 
-// Format Inline Elements: **bold**, *italic*, `code`, and $math$
+// Format Inline Elements: **bold**, *italic*, `code`, and KaTeX inline math ($...$ / \(...\) / \int)
 function formatInlineFormatting(text: string): React.ReactNode {
-  // Simple regex parser for **bold**, *italic*, `code`, and math $...$
   const parts: React.ReactNode[] = [];
   let remaining = text;
   let keyIdx = 0;
 
   while (remaining.length > 0) {
-    // 1. Fenced Inline Math $...$ or $$...$$
-    const mathMatch = remaining.match(/^(\$\$|\$)(.+?)\1/);
+    // 1. Inline Math $...$ or $$...$$ or \(...\)
+    const mathMatch =
+      remaining.match(/^(\$\$|\$)(.+?)\1/) ||
+      remaining.match(/^\\\((.+?)\\\)/);
+
     if (mathMatch) {
-      parts.push(
-        <span
-          key={`math-${keyIdx++}`}
-          className="inline-flex items-center px-2 py-0.5 bg-[#023047] text-[#8ECAE6] font-mono text-xs rounded-md shadow-2xs mx-1"
-        >
-          {mathMatch[2]}
-        </span>
-      );
+      const rawMath = mathMatch[2] || mathMatch[1];
+      parts.push(<MathInline key={`mathinline-${keyIdx++}`} math={rawMath} />);
       remaining = remaining.slice(mathMatch[0].length);
       continue;
     }
 
-    // 2. Fenced Inline Code `code`
+    // 2. Fenced Inline Code `code` (Only if it's NOT a LaTeX math string inside backticks)
     const codeMatch = remaining.match(/^`([^`]+)`/);
     if (codeMatch) {
-      parts.push(
-        <code
-          key={`code-${keyIdx++}`}
-          className="px-1.5 py-0.5 bg-slate-100 text-slate-900 border border-slate-200/80 font-mono text-xs rounded-[6px]"
-        >
-          {codeMatch[1]}
-        </code>
-      );
+      const innerContent = codeMatch[1];
+      if (isMathExpression(innerContent)) {
+        // Render math LaTeX inside backticks properly using KaTeX instead of dark code pill!
+        parts.push(<MathInline key={`mathinline-code-${keyIdx++}`} math={innerContent} />);
+      } else {
+        // Render actual computer code pill
+        parts.push(
+          <code
+            key={`code-${keyIdx++}`}
+            className="px-1.5 py-0.5 bg-slate-100 text-slate-900 border border-slate-200/80 font-mono text-xs rounded-[6px]"
+          >
+            {innerContent}
+          </code>
+        );
+      }
       remaining = remaining.slice(codeMatch[0].length);
       continue;
     }
@@ -297,7 +377,7 @@ function formatInlineFormatting(text: string): React.ReactNode {
       continue;
     }
 
-    // Regular character slice
+    // Slice forward
     const nextSpecial = remaining.search(/[`\*\$]/);
     if (nextSpecial === -1) {
       parts.push(remaining);
@@ -314,7 +394,7 @@ function formatInlineFormatting(text: string): React.ReactNode {
   return <>{parts}</>;
 }
 
-// Fenced Code Block Component with Copy Button
+// Fenced Computer Code Block Component with Copy Button
 const CodeBlock: React.FC<{ code: string; language: string }> = ({ code, language }) => {
   const [copied, setCopied] = useState(false);
 

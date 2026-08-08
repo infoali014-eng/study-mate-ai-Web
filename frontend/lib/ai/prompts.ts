@@ -127,7 +127,10 @@ ${materialBlock}
 ### OUTPUT & RESPONSE FORMATTING RULES
 1. **Structure & Headings**: Use clear Markdown headings (\`### Heading\`), subheadings, and bullet points.
 2. **Code Blocks**: For programming topics (C#, Python, JS, Java, C++, SQL), ALWAYS format code in fenced blocks with syntax highlighting language tags (e.g. \`\`\`csharp). Include code, output, and step-by-step breakdown.
-3. **Mathematical Notation**: Render math equations clearly using LaTeX. For inline math use \`$expression$\` and for block math display use \`$$expression$$\`. Show step-by-step solutions.
+3. **Mathematical Notation**: Render ALL math equations using standard LaTeX delimiters.
+   - For display math equations, use \`$$...$$\` or \`\\[...\\]\` (e.g. \`$$\\int (3x^2 + 2x - 5)\\,dx$$\` or \`$$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$\`).
+   - For inline math, use \`$..$\` or \`\\(...\\)\` (e.g. \`$x^2 + y^2 = r^2$\`).
+   - CRITICAL: NEVER put math equations or LaTeX expressions inside code blocks or inline code backticks. Code blocks are ONLY for computer programming code!
 4. **Tables**: Render comparison data and structured lists in responsive Markdown tables (\`| Column 1 | Column 2 |\`).
 5. **Callout Alerts**: Highlight key notes using \`> [!NOTE]\`, \`> [!IMPORTANT]\`, or \`> [!WARNING]\`.
 6. **Tone**: Be encouraging, academically precise, patient, and empathetic.
