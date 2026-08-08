@@ -18,9 +18,9 @@ export const AdminLayoutClient: React.FC<AdminLayoutClientProps> = ({ children }
     { id: "courses", label: "Courses", icon: "📚", comingSoon: false },
     { id: "media", label: "Media Library", icon: "📁", comingSoon: false },
     { id: "owl", label: "Mr Owl AI", icon: "🦉", comingSoon: false },
-    { id: "community", label: "Join Deep Code", icon: "👥", comingSoon: true },
-    { id: "users", label: "Users", icon: "👤", comingSoon: true },
-    { id: "settings", label: "Settings", icon: "⚙️", comingSoon: true },
+    { id: "community", label: "Join Deep Code", icon: "👥", comingSoon: false },
+    { id: "users", label: "Users", icon: "👤", comingSoon: false },
+    { id: "settings", label: "Settings", icon: "⚙️", comingSoon: false },
   ] as const;
 
   return (
@@ -110,14 +110,20 @@ export const AdminLayoutClient: React.FC<AdminLayoutClientProps> = ({ children }
         </div>
 
         {/* Footer Actions */}
-        <div className="pt-6 border-t border-slate-100 space-y-4">
+        <div className="pt-6 border-t border-slate-100 space-y-2.5">
+          <Link
+            href="/dashboard"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-[#219EBC] to-[#023047] text-white hover:opacity-95 text-xs sm:text-sm font-extrabold shadow-sm transition-all select-none"
+          >
+            🎓 StudyMate AI App →
+          </Link>
           <Link
             href="/"
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-350 text-xs sm:text-sm font-bold transition-colors select-none"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 text-xs font-bold transition-colors select-none"
           >
-            ← Exit to Site
+            ← Exit to Landing Page
           </Link>
-          <div className="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider select-none">
+          <div className="text-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider select-none pt-1">
             Security Zone
           </div>
         </div>

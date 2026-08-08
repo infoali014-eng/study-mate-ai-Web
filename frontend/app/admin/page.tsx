@@ -365,11 +365,19 @@ export default function AdminPage() {
       {/* 5. MR OWL AI TAB */}
       {activeTab === "owl" && (
         <div className="space-y-8 animate-fade-in select-none">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mr Owl AI Studio</h2>
-            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">
-              Configure assistant appearance, color skins, accessories, and dashboard integration
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mr Owl AI Studio</h2>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">
+                Configure assistant appearance, color skins, accessories, and dashboard integration
+              </p>
+            </div>
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#219EBC] text-white hover:bg-[#1a839c] text-xs font-extrabold transition-all shadow-xs shrink-0"
+            >
+              🎓 Open StudyMate AI App →
+            </a>
           </div>
           <OwlPreferencesCard />
         </div>
