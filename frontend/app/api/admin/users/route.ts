@@ -19,7 +19,13 @@ function getSupabaseServer(request: NextRequest) {
   );
 }
 
-// GET: Fetch all users with search & role filter
+function getSupabaseAdmin() {
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", serviceKey);
+}
+
+// GET: Fetch all registered users from auth.users & public.profiles
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseServer(request);
@@ -31,7 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify Admin Status from public.profiles
+    // Verify Admin Status
     const { data: callerProfile } = await (supabase as any)
       .from("profiles")
       .select("role")
@@ -48,41 +54,88 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim().toLowerCase() || "";
     const filterRole = searchParams.get("role")?.trim().toLowerCase() || "all";
 
-    // Query public.profiles
-    let query = (supabase as any)
-      .from("profiles")
-      .select("id, username, full_name, display_name, email, avatar_url, role, last_active_at, created_at")
-      .order("created_at", { ascending: false });
+    const supabaseAdmin = getSupabaseAdmin();
 
-    if (filterRole && filterRole !== "all") {
-      query = query.eq("role", filterRole);
+    // 1. Fetch all registered users from auth.users (Guarantees ALL logged-in users are visible!)
+    let authUsers: any[] = [];
+    try {
+      const { data: authData } = await supabaseAdmin.auth.admin.listUsers();
+      authUsers = authData?.users || [];
+    } catch (authErr) {
+      console.warn("[Admin Users API] Could not list auth.users:", authErr);
     }
 
-    const { data: profiles, error } = await query;
+    // 2. Fetch all profiles from public.profiles
+    const { data: profiles } = await (supabase as any).from("profiles").select("*");
 
-    if (error) throw error;
+    const profileMap = new Map<string, any>();
+    (profiles || []).forEach((p: any) => {
+      profileMap.set(p.id, p);
+    });
 
-    let userList = profiles || [];
+    // 3. Merge auth.users with public.profiles
+    const combinedUsers = authUsers.map((authUser) => {
+      const prof = profileMap.get(authUser.id) || {};
+      const role = prof.role || authUser.app_metadata?.role || authUser.user_metadata?.role || "student";
 
-    // Apply live search filter if provided
+      return {
+        id: authUser.id,
+        email: authUser.email || prof.email || "No email",
+        full_name: prof.full_name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split("@")[0] || "User",
+        display_name: prof.display_name || prof.full_name || authUser.user_metadata?.name || authUser.email?.split("@")[0] || "User",
+        username: prof.username || authUser.user_metadata?.username || authUser.email?.split("@")[0] || authUser.id.slice(0, 8),
+        avatar_url: prof.avatar_url || authUser.user_metadata?.avatar_url || null,
+        role: role as "student" | "buddy" | "admin",
+        created_at: authUser.created_at || prof.created_at,
+        last_active_at: authUser.last_sign_in_at || prof.last_active_at,
+      };
+    });
+
+    // Also include profiles that might not be in authUsers list if any
+    (profiles || []).forEach((p: any) => {
+      if (!combinedUsers.some((u) => u.id === p.id)) {
+        combinedUsers.push({
+          id: p.id,
+          email: p.email || "No email",
+          full_name: p.full_name || p.display_name || p.username || "User",
+          display_name: p.display_name || p.full_name || p.username || "User",
+          username: p.username || p.id.slice(0, 8),
+          avatar_url: p.avatar_url || null,
+          role: (p.role || "student") as "student" | "buddy" | "admin",
+          created_at: p.created_at,
+          last_active_at: p.last_active_at,
+        });
+      }
+    });
+
+    // Sort by created_at DESC
+    combinedUsers.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+
+    // Filter by Role
+    let filteredList = combinedUsers;
+    if (filterRole && filterRole !== "all") {
+      filteredList = filteredList.filter((u) => u.role === filterRole);
+    }
+
+    // Filter by Search Query
     if (search) {
-      userList = userList.filter(
-        (u: any) =>
-          (u.full_name && u.full_name.toLowerCase().includes(search)) ||
-          (u.display_name && u.display_name.toLowerCase().includes(search)) ||
-          (u.username && u.username.toLowerCase().includes(search)) ||
-          (u.email && u.email.toLowerCase().includes(search)) ||
-          (u.role && u.role.toLowerCase().includes(search))
+      filteredList = filteredList.filter(
+        (u) =>
+          u.full_name.toLowerCase().includes(search) ||
+          u.display_name.toLowerCase().includes(search) ||
+          u.username.toLowerCase().includes(search) ||
+          u.email.toLowerCase().includes(search) ||
+          u.role.toLowerCase().includes(search)
       );
     }
 
-    const totalCount = profiles?.length || 0;
-    const buddyCount = profiles?.filter((u: any) => u.role === "buddy").length || 0;
-    const adminCount = profiles?.filter((u: any) => u.role === "admin").length || 0;
-    const studentCount = profiles?.filter((u: any) => u.role === "student" || !u.role).length || 0;
+    const totalCount = combinedUsers.length;
+    const buddyCount = combinedUsers.filter((u) => u.role === "buddy").length;
+    const adminCount = combinedUsers.filter((u) => u.role === "admin").length;
+    const studentCount = combinedUsers.filter((u) => u.role === "student" || !u.role).length;
 
     return NextResponse.json({
-      users: userList,
+      users: filteredList,
       totalCount,
       buddyCount,
       adminCount,
@@ -97,7 +150,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH: Update user role in database
+// PATCH: Update user role in database (public.profiles & auth metadata)
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = getSupabaseServer(request);
@@ -133,31 +186,32 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid role value. Must be 'student', 'buddy', or 'admin'." }, { status: 400 });
     }
 
-    // 1. Update role in public.profiles table (Primary database source of truth)
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // 1. Upsert role in public.profiles table (Primary source of truth for database roles)
     const { error: profileError } = await (supabase as any)
       .from("profiles")
-      .update({
-        role: newRole,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", targetUserId);
+      .upsert(
+        {
+          id: targetUserId,
+          role: newRole,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      console.warn("[Admin Users API] Profiles upsert error:", profileError);
+    }
 
-    // 2. Sync to Supabase Auth Admin if Service Role Key is present
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      try {
-        const supabaseAdmin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
-        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
-          user_metadata: { role: newRole },
-          app_metadata: { role: newRole },
-        });
-      } catch (authErr) {
-        console.warn("[Admin Users API] Auth metadata sync warning:", authErr);
-      }
+    // 2. Also update raw_user_meta_data and raw_app_meta_data in auth.users so user session reflects role immediately
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+        user_metadata: { role: newRole },
+        app_metadata: { role: newRole },
+      });
+    } catch (authErr) {
+      console.warn("[Admin Users API] Auth metadata update warning:", authErr);
     }
 
     return NextResponse.json({
